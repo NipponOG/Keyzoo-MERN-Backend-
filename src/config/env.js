@@ -11,6 +11,10 @@ const env = {
         database: process.env.MONGODB_DATABASE || 'keyzoo',
     },
 
+    turnstile: {
+        secretKey: process.env.TURNSTILE_SECRET_KEY,
+    },
+
     strapi: {
         url: process.env.STRAPI_URL,
         token: process.env.STRAPI_TOKEN,

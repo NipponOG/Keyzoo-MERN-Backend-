@@ -21,6 +21,28 @@ async function findByCode(code) {
     });
 }
 
+async function assignAvailableKey(ownerType, ownerId) {
+    const collection = getCollection();
+
+    return collection.findOneAndUpdate(
+        {
+            ownerType,
+            ownerId: Number(ownerId),
+            isAvailable: true,
+        },
+        {
+            $set: {
+                isAvailable: false,
+                assignedAt: new Date(),
+                updatedAt: new Date(),
+            },
+        },
+        {
+            returnDocument: 'after',
+        }
+    );
+}
+
 async function create(gameKeyData) {
     const document = createGameKeyDocument(gameKeyData);
 
@@ -36,4 +58,5 @@ module.exports = {
     findByLegacyId,
     findByCode,
     create,
+    assignAvailableKey,
 };
