@@ -16,6 +16,19 @@ async function findByEmail(email) {
     });
 }
 
+async function findByGoogleId(googleId) {
+    return getCollection().findOne({
+        googleId,
+    });
+}
+
+async function findByProviderId(provider, providerId) {
+    return getCollection().findOne({
+        provider,
+        googleId: providerId,
+    });
+}
+
 async function findById(id) {
     if (!ObjectId.isValid(id)) {
         return null;
@@ -42,6 +55,14 @@ async function ensureIndexes() {
         { email: 1 },
         { unique: true }
     );
+
+    await getCollection().createIndex(
+        { googleId: 1 },
+        {
+            unique: true,
+            sparse: true,
+        }
+    );
 }
 
 module.exports = {
@@ -49,4 +70,6 @@ module.exports = {
     findById,
     create,
     ensureIndexes,
+    findByGoogleId,
+    findByProviderId,
 };

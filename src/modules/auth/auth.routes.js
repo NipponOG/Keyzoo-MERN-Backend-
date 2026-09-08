@@ -11,4 +11,12 @@ router.post('/login', controller.login);
 
 router.get('/me', requireAuth, controller.getCurrentUser);
 
+router.get('/google', controller.googleLogin);
+router.get('/google/callback', controller.googleCallback);
+
+router.get('/discord', controller.discordLogin);
+router.get('/discord/callback', controller.discordCallback);
+
+router.post('/oauth/exchange', controller.exchangeOAuthCode);
+
 module.exports = router;
