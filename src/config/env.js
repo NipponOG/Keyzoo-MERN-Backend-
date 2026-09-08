@@ -1,6 +1,6 @@
 'use strict';
 
-require('dotenv').config();
+require('dotenv').config({ path: '.env.local', });
 
 const env = {
     nodeEnv: process.env.NODE_ENV || 'development',
