@@ -4,13 +4,17 @@ const app = require('./app');
 const env = require('./config/env');
 const { connectDatabase, closeDatabase } = require('./config/database');
 const authRepository = require('./modules/auth/auth.repository');
+const orderRepository = require('./modules/orders/order.repository');
 
 async function startServer() {
     try {
         await connectDatabase();
+
         await authRepository.ensureIndexes();
+        await orderRepository.ensureIndexes();
 
         console.log('✅ Auth indexes ready');
+        console.log('✅ Order indexes ready');
 
         const server = app.listen(env.port, () => {
             console.log(`🚀 Keyzoo backend running on port ${env.port}`);

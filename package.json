@@ -8,7 +8,8 @@
     "start": "node src/server.js",
     "inspect:migration": "node src/migration/inspect.js",
     "migration:dry": "node src/migration/dryRun.js",
-    "migration": "node src/migration/migrate.js"
+    "migration": "node src/migration/migrate.js",
+    "seed:demo-orders": "node src/migration/seedDemoOrders.js"
   },
   "repository": {
     "type": "git",

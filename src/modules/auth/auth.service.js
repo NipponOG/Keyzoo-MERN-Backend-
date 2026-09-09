@@ -109,6 +109,72 @@ async function loginUser({ email, password }) {
     };
 }
 
+async function loginAdmin({ email, password }) {
+    if (!email || !password) {
+        const error = new Error(
+            'Email and password are required'
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const user = await repository.findByEmail(
+        normalizedEmail
+    );
+
+    if (!user) {
+        const error = new Error(
+            'Invalid email or password'
+        );
+        error.statusCode = 401;
+        throw error;
+    }
+
+    if (user.isBlocked) {
+        const error = new Error(
+            'Your account has been blocked'
+        );
+        error.statusCode = 403;
+        throw error;
+    }
+
+    if (user.role !== 'admin') {
+        const error = new Error(
+            'Admin access required'
+        );
+        error.statusCode = 403;
+        throw error;
+    }
+
+    if (!user.passwordHash) {
+        const error = new Error(
+            'This admin account does not have password login enabled'
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const passwordMatches = await bcrypt.compare(
+        password,
+        user.passwordHash
+    );
+
+    if (!passwordMatches) {
+        const error = new Error(
+            'Invalid email or password'
+        );
+        error.statusCode = 401;
+        throw error;
+    }
+
+    return {
+        jwt: createToken(user),
+        user: sanitizeUser(user),
+    };
+}
+
 async function loginWithGoogle(googleUser) {
     if (!googleUser?.providerId || !googleUser?.email) {
         const error = new Error('Invalid Google account information');
@@ -364,4 +430,5 @@ module.exports = {
     loginWithGoogle,
     exchangeOAuthHandoffCode,
     loginWithDiscord,
+    loginAdmin,
 };
