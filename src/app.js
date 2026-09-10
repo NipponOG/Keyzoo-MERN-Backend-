@@ -14,6 +14,7 @@ const adminRoutes = require('./modules/admin/admin.routes');
 const orderRoutes = require('./modules/orders/order.routes');
 
 const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
+const inventoryRoutes = require('./modules/inventory/inventory.routes');
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/admin/orders', orderRoutes);
 
 app.use('/api/v1/admin/dashboard', dashboardRoutes);
+app.use('/api/v1/admin/inventory', inventoryRoutes);
 
 app.use(errorMiddleware);
 
