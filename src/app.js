@@ -8,6 +8,7 @@ const morgan = require('morgan');
 const productRoutes = require('./modules/products/product.routes');
 const giftCardRoutes = require('./modules/gift-cards/gift-card.routes');
 const gameKeyRoutes = require('./modules/game-keys/game-key.routes');
+const gameKeyAdminRoutes = require('./modules/game-keys/game-key.admin.routes');
 const errorMiddleware = require('./middleware/error.middleware');
 const authRoutes = require('./modules/auth/auth.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
@@ -35,6 +36,7 @@ app.get('/api/v1/health', (req, res) => {
 app.use('/api/v1/products', productRoutes);
 app.use('/api/v1/gift-cards', giftCardRoutes);
 app.use('/api/v1/game-keys', gameKeyRoutes);
+app.use('/api/v1/admin/game-keys', gameKeyAdminRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/admin', adminRoutes);
 

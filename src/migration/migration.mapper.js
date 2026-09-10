@@ -1,5 +1,25 @@
 'use strict';
 
+function mapMediaImage(media) {
+    if (!media) {
+        return null;
+    }
+
+    return {
+        url: media.url ?? null,
+
+        thumbnail: media.formats?.thumbnail?.url ?? null,
+        small: media.formats?.small?.url ?? null,
+        medium: media.formats?.medium?.url ?? null,
+        large: media.formats?.large?.url ?? null,
+
+        width: media.width ?? null,
+        height: media.height ?? null,
+
+        alt: media.alternativeText ?? null,
+    };
+}
+
 function mapProduct(product) {
     return {
         legacyId: product.id,
@@ -9,6 +29,13 @@ function mapProduct(product) {
 
         title: product.title ?? '',
         slug: product.slug ?? '',
+
+        image: mapMediaImage(product.image),
+        gallery: Array.isArray(product.gallery)
+            ? product.gallery
+                .map(mapMediaImage)
+                .filter(Boolean)
+            : [],
 
         card_region: product.card_region ?? null,
 
@@ -78,6 +105,14 @@ function mapGiftCard(giftCard) {
 
         title: giftCard.title ?? '',
         slug: giftCard.slug ?? '',
+
+        image: mapMediaImage(giftCard.image),
+
+        gallery: Array.isArray(giftCard.gallery)
+            ? giftCard.gallery
+                .map(mapMediaImage)
+                .filter(Boolean)
+            : [],
 
         card_region: giftCard.card_region ?? null,
 

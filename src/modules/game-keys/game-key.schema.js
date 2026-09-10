@@ -32,7 +32,7 @@ function createGameKeyDocument(data = {}) {
         createdAt: data.createdAt ?? now,
         updatedAt: now,
 
-        migratedAt: data.migratedAt ?? now,
+        migratedAt: data.migratedAt ?? null,
     };
 }
 

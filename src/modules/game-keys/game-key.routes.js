@@ -7,6 +7,11 @@ const router = express.Router();
 
 // router.get('/:legacyId', controller.getGameKeyByLegacyId);   Not needed as we are not using this endpoint in the frontend, but can be used for testing purposes
 
+router.get(
+    '/',
+    controller.getGameKeysByOwner
+);
+
 router.patch(
     '/assign/:ownerType/:ownerId',
     controller.assignAvailableGameKey
