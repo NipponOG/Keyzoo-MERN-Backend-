@@ -25,6 +25,12 @@ async function getInventory() {
         repository.getGameKeyCounts(),
     ]);
 
+    console.log("========== INVENTORY DEBUG ==========");
+    console.log("Products:", products.length);
+    console.log("Gift Cards:", giftCards.length);
+    console.log("Game Key Counts:", gameKeyCounts);
+    console.log("=====================================");
+
     const productCounts = new Map();
     const giftCardCounts = new Map();
 
@@ -32,6 +38,9 @@ async function getInventory() {
         const {
             productId,
             giftCardId,
+        } = item._id;
+
+        const {
             totalKeys,
             availableKeys,
         } = item;
@@ -63,6 +72,18 @@ async function getInventory() {
 
     const productInventory = products.map(
         (product) => {
+
+            console.log(
+                "PRODUCT:",
+                product._id.toString(),
+                product.title
+            );
+
+            console.log(
+                "MATCHING COUNTS:",
+                productCounts.get(product._id.toString())
+            );
+
             const counts =
                 productCounts.get(
                     product._id.toString()
@@ -106,10 +127,33 @@ async function getInventory() {
             };
         });
 
-    return [
+    const inventoryProducts = [
         ...productInventory,
         ...giftCardInventory,
     ];
+
+    const totalProducts = inventoryProducts.length;
+
+    const totalKeys = inventoryProducts.reduce(
+        (sum, item) => sum + item.totalKeys,
+        0
+    );
+
+    const lowStock = inventoryProducts.filter(
+        (item) => item.status === 'Low Stock'
+    ).length;
+
+    const outOfStock = inventoryProducts.filter(
+        (item) => item.status === 'Out of Stock'
+    ).length;
+
+    return {
+        totalProducts,
+        totalKeys,
+        lowStock,
+        outOfStock,
+        products: inventoryProducts,
+    };
 }
 
 module.exports = {
