@@ -1,6 +1,11 @@
 'use strict';
 
-const { fetchAll } = require('./strapi.client');
+require('dotenv').config();
+
+const { ObjectId } = require('mongodb');
+
+const { getDatabase, connectDatabase } = require('../config/database');
+
 const {
     mapProduct,
     mapGiftCard,
@@ -8,437 +13,546 @@ const {
 } = require('./migration.mapper');
 
 const {
-    connectDatabase,
-    getDatabase,
-    closeDatabase,
-} = require('../config/database');
+    fetchAll,
+} = require('./strapi.client');
 
-function validateMigrationData(products, giftCards, gameKeys) {
-    const problems = [];
+const PRODUCTS_COLLECTION = 'products';
+const GIFT_CARDS_COLLECTION = 'gift_cards';
+const GAME_KEYS_COLLECTION = 'game_keys';
 
-    const productIds = new Set(
-        products.map((product) => product.id)
-    );
-
-    const giftCardIds = new Set(
-        giftCards.map((giftCard) => giftCard.id)
-    );
-
-    const gameKeyIds = new Set();
-    const gameKeyCodes = new Set();
-
-    // --------------------------------------------
-    // Validate Products
-    // --------------------------------------------
-
-    for (const product of products) {
-        if (product.id === undefined || product.id === null) {
-            problems.push(
-                'Product is missing id'
-            );
-        }
-
-        if (!product.documentId) {
-            problems.push(
-                `Product ${product.id} is missing documentId`
-            );
-        }
-
-        if (!product.slug) {
-            problems.push(
-                `Product ${product.id} is missing slug`
-            );
-        }
-
-        if (!product.title) {
-            problems.push(
-                `Product ${product.id} is missing title`
-            );
-        }
+async function resetCollections(db) {
+    if (process.env.RESET_MIGRATION_DATA !== 'true') {
+        throw new Error(
+            'Migration reset blocked. Set RESET_MIGRATION_DATA=true before running the clean migration.'
+        );
     }
 
-    // --------------------------------------------
-    // Validate Gift Cards
-    // --------------------------------------------
+    console.log('\n🧹 Resetting migration collections...');
+    console.log('\n🧹 Resetting migration collections...');
 
-    for (const giftCard of giftCards) {
-        if (giftCard.id === undefined || giftCard.id === null) {
-            problems.push(
-                'Gift Card is missing id'
-            );
-        }
+    for (const collectionName of [
+        PRODUCTS_COLLECTION,
+        GIFT_CARDS_COLLECTION,
+        GAME_KEYS_COLLECTION,
+    ]) {
+        const exists = await db
+            .listCollections({ name: collectionName })
+            .hasNext();
 
-        if (!giftCard.documentId) {
-            problems.push(
-                `Gift Card ${giftCard.id} is missing documentId`
-            );
-        }
-
-        if (!giftCard.slug) {
-            problems.push(
-                `Gift Card ${giftCard.id} is missing slug`
-            );
-        }
-
-        if (!giftCard.title) {
-            problems.push(
-                `Gift Card ${giftCard.id} is missing title`
-            );
+        if (exists) {
+            await db.collection(collectionName).drop();
+            console.log(`   ✓ Dropped ${collectionName}`);
+        } else {
+            console.log(`   - ${collectionName} does not exist`);
         }
     }
+}
 
-    // --------------------------------------------
-    // Validate Game Keys
-    // --------------------------------------------
+async function createIndexes(db) {
+    console.log('\n📌 Creating indexes...');
+
+    await db.collection(PRODUCTS_COLLECTION).createIndex(
+        { slug: 1 },
+        {
+            unique: true,
+            name: 'slug_1',
+        }
+    );
+
+    await db.collection(GIFT_CARDS_COLLECTION).createIndex(
+        { slug: 1 },
+        {
+            unique: true,
+            name: 'slug_1',
+        }
+    );
+
+    await db.collection(GAME_KEYS_COLLECTION).createIndex(
+        { code: 1 },
+        {
+            unique: true,
+            name: 'code_1',
+        }
+    );
+
+    await db.collection(GAME_KEYS_COLLECTION).createIndex(
+        { productId: 1 },
+        {
+            name: 'productId_1',
+        }
+    );
+
+    await db.collection(GAME_KEYS_COLLECTION).createIndex(
+        { giftCardId: 1 },
+        {
+            name: 'giftCardId_1',
+        }
+    );
+
+    console.log('   ✓ Product slug index');
+    console.log('   ✓ Gift card slug index');
+    console.log('   ✓ Game key code index');
+    console.log('   ✓ Game key productId index');
+    console.log('   ✓ Game key giftCardId index');
+}
+
+function validateGameKeyRelationships(
+    gameKeys,
+    productIdMap,
+    giftCardIdMap
+) {
+    const errors = [];
 
     for (const gameKey of gameKeys) {
-        const hasProduct = !!gameKey.product;
-        const hasGiftCard = !!gameKey.giftCard;
+        const hasProduct = Boolean(gameKey.product?.id);
+        const hasGiftCard = Boolean(gameKey.giftCard?.id);
 
-        // ID
-        if (gameKey.id === undefined || gameKey.id === null) {
-            problems.push(
-                'Game Key is missing id'
+        if (hasProduct) {
+            const mongoProductId = productIdMap.get(
+                gameKey.product.id
             );
-        } else if (gameKeyIds.has(gameKey.id)) {
-            problems.push(
-                `Duplicate Game Key id ${gameKey.id}`
-            );
-        } else {
-            gameKeyIds.add(gameKey.id);
+
+            if (!mongoProductId) {
+                errors.push(
+                    `Game key ${gameKey.id} references missing product ${gameKey.product.id}`
+                );
+            }
         }
 
-        // Code
-        if (!gameKey.code) {
-            problems.push(
-                `Game Key ${gameKey.id} is missing code`
+        if (hasGiftCard) {
+            const mongoGiftCardId = giftCardIdMap.get(
+                gameKey.giftCard.id
             );
-        } else if (gameKeyCodes.has(gameKey.code)) {
-            problems.push(
-                `Duplicate Game Key code "${gameKey.code}"`
-            );
-        } else {
-            gameKeyCodes.add(gameKey.code);
+
+            if (!mongoGiftCardId) {
+                errors.push(
+                    `Game key ${gameKey.id} references missing gift card ${gameKey.giftCard.id}`
+                );
+            }
         }
 
-        // Exactly one owner
         if (hasProduct && hasGiftCard) {
-            problems.push(
-                `Game Key ${gameKey.id} belongs to both Product and Gift Card`
+            errors.push(
+                `Game key ${gameKey.id} references both product and gift card`
             );
-
-            continue;
         }
 
         if (!hasProduct && !hasGiftCard) {
-            problems.push(
-                `Game Key ${gameKey.id} has no Product or Gift Card owner`
+            errors.push(
+                `Game key ${gameKey.id} has no product or gift card owner`
             );
-
-            continue;
-        }
-
-        // Product owner exists
-        if (hasProduct) {
-            const productId = gameKey.product.id;
-
-            if (!productIds.has(productId)) {
-                problems.push(
-                    `Game Key ${gameKey.id} references missing Product ${productId}`
-                );
-            }
-        }
-
-        // Gift Card owner exists
-        if (hasGiftCard) {
-            const giftCardId = gameKey.giftCard.id;
-
-            if (!giftCardIds.has(giftCardId)) {
-                problems.push(
-                    `Game Key ${gameKey.id} references missing Gift Card ${giftCardId}`
-                );
-            }
         }
     }
 
-    return problems;
+    if (errors.length > 0) {
+        const error = new Error(
+            `Game key relationship validation failed:\n${errors.join('\n')}`
+        );
+
+        error.statusCode = 500;
+        throw error;
+    }
 }
 
 async function migrate() {
-    try {
-        console.log('\n🚀 Keyzoo MongoDB migration');
-        console.log('====================================\n');
+    console.log('\n========================================');
+    console.log('   KEYZOO CLEAN MONGODB MIGRATION');
+    console.log('========================================\n');
 
-        // Connect to MongoDB
-        await connectDatabase();
+    // --------------------------------------------------
+    // 1. Connect to MongoDB
+    // --------------------------------------------------
 
-        const db = getDatabase();
+    await connectDatabase();
 
-        // Read source data from Strapi
-        console.log('Reading Products...');
-        const products = await fetchAll('products');
+    const db = getDatabase();
 
-        console.log('Reading Gift Cards...');
-        const giftCards = await fetchAll('gift-cards');
+    console.log(`📦 MongoDB database: ${db.databaseName}`);
 
-        console.log('Reading Game Keys...');
-        const gameKeys = await fetchAll('game-keys');
+    // --------------------------------------------------
+    // 2. Fetch Strapi data
+    // --------------------------------------------------
 
-        console.log('\nSource records');
-        console.log('----------------');
-        console.log(`Products:   ${products.length}`);
-        console.log(`Gift Cards: ${giftCards.length}`);
-        console.log(`Game Keys:  ${gameKeys.length}`);
+    console.log('\n📡 Fetching data from Strapi...');
 
-        const validationProblems = validateMigrationData(
-            products,
-            giftCards,
-            gameKeys
-        );
+    const [
+        products,
+        giftCards,
+        gameKeys,
+    ] = await Promise.all([
+        fetchAll('products'),
+        fetchAll('gift-cards'),
+        fetchAll('game-keys'),
+    ]);
 
-        console.log('\n====================================');
-        console.log('Pre-migration validation');
-        console.log('====================================');
+    console.log(`   Products:    ${products.length}`);
+    console.log(`   Gift Cards:  ${giftCards.length}`);
+    console.log(`   Game Keys:   ${gameKeys.length}`);
 
-        if (validationProblems.length > 0) {
-            console.error(
-                `❌ Migration stopped. ${validationProblems.length} problem(s) found:`
-            );
+    // --------------------------------------------------
+    // 3. Validate source relationships
+    // --------------------------------------------------
 
-            for (const problem of validationProblems) {
-                console.error(`- ${problem}`);
+    console.log('\n🔍 Validating source relationships...');
+
+    const productSourceIds = new Set(
+        products.map((product) => product.id)
+    );
+
+    const giftCardSourceIds = new Set(
+        giftCards.map((giftCard) => giftCard.id)
+    );
+
+    for (const gameKey of gameKeys) {
+        if (gameKey.product?.id) {
+            if (!productSourceIds.has(gameKey.product.id)) {
+                throw new Error(
+                    `Game key ${gameKey.id} references product ${gameKey.product.id}, but that product was not fetched.`
+                );
             }
-
-            console.error('\n❌ No MongoDB data was written.');
-
-            return;
         }
 
-        console.log('✅ Products validated');
-        console.log('✅ Gift Cards validated');
-        console.log('✅ Game Keys validated');
-        console.log('✅ Game Key ownership validated');
-        console.log('✅ No duplicate Game Key IDs');
-        console.log('✅ No duplicate Game Key codes');
-        console.log('✅ All Game Key owners exist');
-
-        // Map source records
-        const mappedProducts = products.map(mapProduct);
-        const mappedGiftCards = giftCards.map(mapGiftCard);
-        const mappedGameKeys = gameKeys.map(mapGameKey);
-
-        // MongoDB collections
-        const productCollection = db.collection('products');
-        const giftCardCollection = db.collection('gift_cards');
-        const gameKeyCollection = db.collection('game_keys');
-
-        // Create indexes
-        console.log('\nCreating indexes...');
-
-        await productCollection.createIndex(
-            { legacyId: 1 },
-            { unique: true }
-        );
-
-        await productCollection.createIndex(
-            { slug: 1 },
-            { unique: true }
-        );
-
-        await giftCardCollection.createIndex(
-            { legacyId: 1 },
-            { unique: true }
-        );
-
-        await giftCardCollection.createIndex(
-            { slug: 1 },
-            { unique: true }
-        );
-
-        await gameKeyCollection.createIndex(
-            { legacyId: 1 },
-            { unique: true }
-        );
-
-        await gameKeyCollection.createIndex(
-            { code: 1 },
-            { unique: true }
-        );
-
-        console.log('✅ Indexes ready');
-
-        // --------------------------------------------------
-        // Products
-        // --------------------------------------------------
-
-        console.log('\nMigrating Products...');
-
-        if (mappedProducts.length > 0) {
-            const productOperations = mappedProducts.map((product) => ({
-                updateOne: {
-                    filter: {
-                        legacyId: product.legacyId,
-                    },
-                    update: {
-                        $set: product,
-                    },
-                    upsert: true,
-                },
-            }));
-
-            const result = await productCollection.bulkWrite(
-                productOperations,
-                { ordered: false }
-            );
-
-            console.log(
-                `✅ Products migrated: ${result.upsertedCount + result.modifiedCount}`
-            );
-        } else {
-            console.log('No Products to migrate.');
-        }
-
-        // --------------------------------------------------
-        // Gift Cards
-        // --------------------------------------------------
-
-        console.log('\nMigrating Gift Cards...');
-
-        if (mappedGiftCards.length > 0) {
-            const giftCardOperations = mappedGiftCards.map((giftCard) => ({
-                updateOne: {
-                    filter: {
-                        legacyId: giftCard.legacyId,
-                    },
-                    update: {
-                        $set: giftCard,
-                    },
-                    upsert: true,
-                },
-            }));
-
-            const result = await giftCardCollection.bulkWrite(
-                giftCardOperations,
-                { ordered: false }
-            );
-
-            console.log(
-                `✅ Gift Cards migrated: ${result.upsertedCount + result.modifiedCount}`
-            );
-        } else {
-            console.log('No Gift Cards to migrate.');
-        }
-
-        // --------------------------------------------------
-        // Game Keys
-        // --------------------------------------------------
-
-        console.log('\nMigrating Game Keys...');
-
-        if (mappedGameKeys.length > 0) {
-            const gameKeyOperations = mappedGameKeys.map((gameKey) => ({
-                updateOne: {
-                    filter: {
-                        legacyId: gameKey.legacyId,
-                    },
-                    update: {
-                        $set: gameKey,
-                    },
-                    upsert: true,
-                },
-            }));
-
-            const result = await gameKeyCollection.bulkWrite(
-                gameKeyOperations,
-                { ordered: false }
-            );
-
-            console.log(
-                `✅ Game Keys migrated: ${result.upsertedCount + result.modifiedCount}`
-            );
-        } else {
-            console.log('No Game Keys to migrate.');
-        }
-
-        // --------------------------------------------------
-        // Final verification
-        // --------------------------------------------------
-
-        console.log('\n====================================');
-        console.log('MongoDB verification');
-        console.log('====================================');
-
-        const productCount = await productCollection.countDocuments();
-        const giftCardCount = await giftCardCollection.countDocuments();
-        const gameKeyCount = await gameKeyCollection.countDocuments();
-
-        console.log('\nSource vs MongoDB');
-        console.log('----------------');
-
-        console.log(
-            `Products:   ${products.length} → ${productCount}`
-        );
-
-        console.log(
-            `Gift Cards: ${giftCards.length} → ${giftCardCount}`
-        );
-
-        console.log(
-            `Game Keys:  ${gameKeys.length} → ${gameKeyCount}`
-        );
-
-        const countProblems = [];
-
-        if (productCount !== products.length) {
-            countProblems.push(
-                `Product count mismatch: expected ${products.length}, found ${productCount}`
-            );
-        }
-
-        if (giftCardCount !== giftCards.length) {
-            countProblems.push(
-                `Gift Card count mismatch: expected ${giftCards.length}, found ${giftCardCount}`
-            );
-        }
-
-        if (gameKeyCount !== gameKeys.length) {
-            countProblems.push(
-                `Game Key count mismatch: expected ${gameKeys.length}, found ${gameKeyCount}`
-            );
-        }
-
-        if (countProblems.length > 0) {
-            console.error('\n❌ MongoDB verification failed');
-
-            for (const problem of countProblems) {
-                console.error(`- ${problem}`);
+        if (gameKey.giftCard?.id) {
+            if (!giftCardSourceIds.has(gameKey.giftCard.id)) {
+                throw new Error(
+                    `Game key ${gameKey.id} references gift card ${gameKey.giftCard.id}, but that gift card was not fetched.`
+                );
             }
-
-            process.exitCode = 1;
-        } else {
-            console.log('\n✅ Product count verified');
-            console.log('✅ Gift Card count verified');
-            console.log('✅ Game Key count verified');
-            console.log('✅ MongoDB counts match Strapi source');
         }
-
-        if (countProblems.length === 0) {
-            console.log('\n====================================');
-            console.log('MIGRATION COMPLETE');
-            console.log('====================================');
-        } else {
-            console.log('\n====================================');
-            console.log('MIGRATION FINISHED WITH ERRORS');
-            console.log('====================================');
-        }
-
-    } catch (error) {
-        console.error('\n❌ Migration failed');
-        console.error(error);
-        process.exitCode = 1;
-    } finally {
-        await closeDatabase();
     }
+
+    console.log('   ✓ Source relationships are valid');
+
+    // --------------------------------------------------
+    // 4. Reset current migration collections
+    // --------------------------------------------------
+
+    await resetCollections(db);
+
+    // --------------------------------------------------
+    // 5. Create clean indexes
+    // --------------------------------------------------
+
+    await createIndexes(db);
+
+    // --------------------------------------------------
+    // 6. Map products
+    // --------------------------------------------------
+
+    console.log('\n🛒 Migrating products...');
+
+    const productDocuments = products.map(mapProduct);
+
+    const productResult = productDocuments.length
+        ? await db
+            .collection(PRODUCTS_COLLECTION)
+            .insertMany(productDocuments)
+        : { insertedIds: {} };
+
+    console.log(
+        `   ✓ Inserted ${productDocuments.length} products`
+    );
+
+    // --------------------------------------------------
+    // 7. Build Strapi Product ID → Mongo ObjectId map
+    // --------------------------------------------------
+
+    const productIdMap = new Map();
+
+    products.forEach((product, index) => {
+        const mongoId =
+            productResult.insertedIds[index];
+
+        if (!mongoId) {
+            throw new Error(
+                `Could not determine MongoDB _id for product ${product.id}`
+            );
+        }
+
+        productIdMap.set(
+            product.id,
+            mongoId
+        );
+    });
+
+    console.log(
+        `   ✓ Created ${productIdMap.size} product ID mappings`
+    );
+
+    // --------------------------------------------------
+    // 8. Map gift cards
+    // --------------------------------------------------
+
+    console.log('\n🎁 Migrating gift cards...');
+
+    const giftCardDocuments =
+        giftCards.map(mapGiftCard);
+
+    const giftCardResult = giftCardDocuments.length
+        ? await db
+            .collection(GIFT_CARDS_COLLECTION)
+            .insertMany(giftCardDocuments)
+        : { insertedIds: {} };
+
+    console.log(
+        `   ✓ Inserted ${giftCardDocuments.length} gift cards`
+    );
+
+    // --------------------------------------------------
+    // 9. Build Strapi Gift Card ID → Mongo ObjectId map
+    // --------------------------------------------------
+
+    const giftCardIdMap = new Map();
+
+    giftCards.forEach((giftCard, index) => {
+        const mongoId =
+            giftCardResult.insertedIds[index];
+
+        if (!mongoId) {
+            throw new Error(
+                `Could not determine MongoDB _id for gift card ${giftCard.id}`
+            );
+        }
+
+        giftCardIdMap.set(
+            giftCard.id,
+            mongoId
+        );
+    });
+
+    console.log(
+        `   ✓ Created ${giftCardIdMap.size} gift card ID mappings`
+    );
+
+    // --------------------------------------------------
+    // 10. Validate game key relationships
+    // --------------------------------------------------
+
+    console.log('\n🔗 Validating game key mappings...');
+
+    validateGameKeyRelationships(
+        gameKeys,
+        productIdMap,
+        giftCardIdMap
+    );
+
+    console.log('   ✓ All game key relationships can be resolved');
+
+    // --------------------------------------------------
+    // 11. Map game keys using Mongo ObjectIds
+    // --------------------------------------------------
+
+    console.log('\n🔑 Migrating game keys...');
+
+    const gameKeyDocuments = gameKeys.map(
+        (gameKey) =>
+            mapGameKey(
+                gameKey,
+                productIdMap,
+                giftCardIdMap
+            )
+    );
+
+    // Safety check:
+    // no game key should contain legacy identity fields.
+    for (const document of gameKeyDocuments) {
+        if (
+            'legacyId' in document ||
+            'legacyDocumentId' in document ||
+            'ownerType' in document ||
+            'ownerId' in document
+        ) {
+            throw new Error(
+                'Clean migration safety check failed: legacy game-key fields detected.'
+            );
+        }
+
+        if (
+            document.productId !== null &&
+            !(document.productId instanceof ObjectId)
+        ) {
+            throw new Error(
+                'Clean migration safety check failed: productId is not a MongoDB ObjectId.'
+            );
+        }
+
+        if (
+            document.giftCardId !== null &&
+            !(document.giftCardId instanceof ObjectId)
+        ) {
+            throw new Error(
+                'Clean migration safety check failed: giftCardId is not a MongoDB ObjectId.'
+            );
+        }
+    }
+
+    const gameKeyResult = gameKeyDocuments.length
+        ? await db
+            .collection(GAME_KEYS_COLLECTION)
+            .insertMany(gameKeyDocuments)
+        : { insertedIds: {} };
+
+    console.log(
+        `   ✓ Inserted ${gameKeyDocuments.length} game keys`
+    );
+
+    // --------------------------------------------------
+    // 12. Verify final counts
+    // --------------------------------------------------
+
+    console.log('\n📊 Verifying migration...');
+
+    const [
+        productCount,
+        giftCardCount,
+        gameKeyCount,
+    ] = await Promise.all([
+        db.collection(PRODUCTS_COLLECTION).countDocuments(),
+        db.collection(GIFT_CARDS_COLLECTION).countDocuments(),
+        db.collection(GAME_KEYS_COLLECTION).countDocuments(),
+    ]);
+
+    console.log(`   Products:    ${productCount}/${products.length}`);
+    console.log(`   Gift Cards:  ${giftCardCount}/${giftCards.length}`);
+    console.log(`   Game Keys:   ${gameKeyCount}/${gameKeys.length}`);
+
+    if (productCount !== products.length) {
+        throw new Error(
+            `Product count mismatch: expected ${products.length}, got ${productCount}`
+        );
+    }
+
+    if (giftCardCount !== giftCards.length) {
+        throw new Error(
+            `Gift card count mismatch: expected ${giftCards.length}, got ${giftCardCount}`
+        );
+    }
+
+    if (gameKeyCount !== gameKeys.length) {
+        throw new Error(
+            `Game key count mismatch: expected ${gameKeys.length}, got ${gameKeyCount}`
+        );
+    }
+
+    // --------------------------------------------------
+    // 13. Verify clean schema
+    // --------------------------------------------------
+
+    console.log('\n🧼 Checking for legacy fields...');
+
+    const legacyProduct = await db
+        .collection(PRODUCTS_COLLECTION)
+        .findOne({
+            $or: [
+                { legacyId: { $exists: true } },
+                { legacyDocumentId: { $exists: true } },
+                { legacyCreatedAt: { $exists: true } },
+                { legacyUpdatedAt: { $exists: true } },
+                { migratedAt: { $exists: true } },
+            ],
+        });
+
+    const legacyGiftCard = await db
+        .collection(GIFT_CARDS_COLLECTION)
+        .findOne({
+            $or: [
+                { legacyId: { $exists: true } },
+                { legacyDocumentId: { $exists: true } },
+                { legacyCreatedAt: { $exists: true } },
+                { legacyUpdatedAt: { $exists: true } },
+                { migratedAt: { $exists: true } },
+            ],
+        });
+
+    const legacyGameKey = await db
+        .collection(GAME_KEYS_COLLECTION)
+        .findOne({
+            $or: [
+                { legacyId: { $exists: true } },
+                { legacyDocumentId: { $exists: true } },
+                { legacyCreatedAt: { $exists: true } },
+                { legacyUpdatedAt: { $exists: true } },
+                { migratedAt: { $exists: true } },
+                { ownerType: { $exists: true } },
+                { ownerId: { $exists: true } },
+            ],
+        });
+
+    if (
+        legacyProduct ||
+        legacyGiftCard ||
+        legacyGameKey
+    ) {
+        throw new Error(
+            'Legacy fields were found in the migrated database.'
+        );
+    }
+
+    console.log('   ✓ No legacy identity fields found');
+
+    // --------------------------------------------------
+    // 14. Verify game key references
+    // --------------------------------------------------
+
+    console.log('\n🔗 Checking game key references...');
+
+    const migratedGameKeys = await db
+        .collection(GAME_KEYS_COLLECTION)
+        .find({})
+        .toArray();
+
+    for (const gameKey of migratedGameKeys) {
+        if (gameKey.productId) {
+            const product = await db
+                .collection(PRODUCTS_COLLECTION)
+                .findOne({
+                    _id: gameKey.productId,
+                });
+
+            if (!product) {
+                throw new Error(
+                    `Game key ${gameKey._id} references missing product ${gameKey.productId}`
+                );
+            }
+        }
+
+        if (gameKey.giftCardId) {
+            const giftCard = await db
+                .collection(GIFT_CARDS_COLLECTION)
+                .findOne({
+                    _id: gameKey.giftCardId,
+                });
+
+            if (!giftCard) {
+                throw new Error(
+                    `Game key ${gameKey._id} references missing gift card ${gameKey.giftCardId}`
+                );
+            }
+        }
+    }
+
+    console.log('   ✓ All game key references are valid');
+
+    // --------------------------------------------------
+    // Done
+    // --------------------------------------------------
+
+    console.log('\n========================================');
+    console.log('   ✅ CLEAN MIGRATION COMPLETED');
+    console.log('========================================');
+
+    console.log('\nFinal MongoDB counts:');
+    console.log(`   Products:   ${productCount}`);
+    console.log(`   Gift Cards: ${giftCardCount}`);
+    console.log(`   Game Keys:  ${gameKeyCount}`);
+
+    console.log('\nMongoDB is now using _id as the primary identity.');
+    console.log('Strapi IDs were used only during migration.\n');
 }
 
-migrate();
+migrate()
+    .catch((error) => {
+        console.error('\n❌ MIGRATION FAILED');
+        console.error(error);
+        process.exitCode = 1;
+    });

@@ -1,44 +1,32 @@
 'use strict';
 
-const gameKeyService = require('./game-key.service');
-
-async function getGameKeyByLegacyId(req, res, next) {
-    try {
-        const gameKey = await gameKeyService.getGameKeyByLegacyId(
-            req.params.legacyId
-        );
-
-        res.json({
-            success: true,
-            data: gameKey,
-        });
-    } catch (error) {
-        next(error);
-    }
-}
-
-async function assignAvailableGameKey(req, res, next) {
-    try {
-        const gameKey = await gameKeyService.assignAvailableGameKey(
-            req.params.ownerType,
-            req.params.ownerId
-        );
-
-        res.json({
-            success: true,
-            data: gameKey,
-        });
-    } catch (error) {
-        next(error);
-    }
-}
+const service = require('./game-key.service');
 
 async function getGameKeysByOwner(req, res, next) {
     try {
-        const keys = await gameKeyService.getGameKeysByOwner(
-            req.query.ownerType,
-            req.query.ownerId
-        );
+        const { productId, giftCardId } = req.query;
+
+        if (!productId && !giftCardId) {
+            const error = new Error(
+                'Either productId or giftCardId is required.'
+            );
+
+            error.statusCode = 400;
+            throw error;
+        }
+
+        if (productId && giftCardId) {
+            const error = new Error(
+                'Provide either productId or giftCardId, not both.'
+            );
+
+            error.statusCode = 400;
+            throw error;
+        }
+
+        const keys = productId
+            ? await service.getGameKeysByProductId(productId)
+            : await service.getGameKeysByGiftCardId(giftCardId);
 
         res.json({
             success: true,
@@ -51,13 +39,42 @@ async function getGameKeysByOwner(req, res, next) {
 
 async function uploadGameKeys(req, res, next) {
     try {
-        const { ownerType, ownerId, keys } = req.body;
-
-        const gameKeys = await gameKeyService.uploadGameKeys({
-            ownerType,
-            ownerId,
+        const {
+            productId,
+            giftCardId,
             keys,
-        });
+        } = req.body;
+
+        if (!productId && !giftCardId) {
+            const error = new Error(
+                'Either productId or giftCardId is required.'
+            );
+
+            error.statusCode = 400;
+            throw error;
+        }
+
+        if (productId && giftCardId) {
+            const error = new Error(
+                'Provide either productId or giftCardId, not both.'
+            );
+
+            error.statusCode = 400;
+            throw error;
+        }
+
+        const ownerType = productId
+            ? 'product'
+            : 'gift-card';
+
+        const ownerId = productId || giftCardId;
+
+        const gameKeys =
+            await service.uploadGameKeys({
+                ownerType,
+                ownerId,
+                keys,
+            });
 
         res.status(201).json({
             success: true,
@@ -71,9 +88,19 @@ async function uploadGameKeys(req, res, next) {
 
 async function deleteGameKey(req, res, next) {
     try {
-        const gameKey = await gameKeyService.deleteGameKey(
-            req.params.id
-        );
+        const { id } = req.params;
+
+        const gameKey =
+            await service.deleteGameKey(id);
+
+        if (!gameKey) {
+            const error = new Error(
+                'Game key not found.'
+            );
+
+            error.statusCode = 404;
+            throw error;
+        }
 
         res.json({
             success: true,
@@ -85,10 +112,61 @@ async function deleteGameKey(req, res, next) {
     }
 }
 
+async function assignAvailableGameKey(req, res, next) {
+    try {
+        const {
+            productId,
+            giftCardId,
+        } = req.body;
+
+        if (!productId && !giftCardId) {
+            const error = new Error(
+                'Either productId or giftCardId is required.'
+            );
+
+            error.statusCode = 400;
+            throw error;
+        }
+
+        if (productId && giftCardId) {
+            const error = new Error(
+                'Provide either productId or giftCardId, not both.'
+            );
+
+            error.statusCode = 400;
+            throw error;
+        }
+
+        const gameKey =
+            await service.assignAvailableGameKey({
+                ownerType: productId
+                    ? 'product'
+                    : 'gift-card',
+
+                ownerId: productId || giftCardId,
+            });
+
+        if (!gameKey) {
+            const error = new Error(
+                'No available game key found.'
+            );
+
+            error.statusCode = 404;
+            throw error;
+        }
+
+        res.json({
+            success: true,
+            data: gameKey,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 module.exports = {
-    getGameKeyByLegacyId,
-    assignAvailableGameKey,
     getGameKeysByOwner,
-    deleteGameKey,
     uploadGameKeys,
+    deleteGameKey,
+    assignAvailableGameKey,
 };

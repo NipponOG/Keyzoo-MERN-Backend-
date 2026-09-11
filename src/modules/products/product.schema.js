@@ -11,7 +11,7 @@ function createProductDocument(data = {}) {
     const now = new Date();
 
     return {
-        legacyId: data.legacyId ?? null,
+        // legacyId: data.legacyId ?? null,
         type: 'product',
 
         title: data.title ?? '',

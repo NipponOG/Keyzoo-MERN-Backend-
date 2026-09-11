@@ -1,8 +1,8 @@
 'use strict';
 
-const inventoryRepository = require('./inventory.repository');
+const repository = require('./inventory.repository');
 
-function getStockStatus(availableKeys) {
+function getStatus(availableKeys) {
     if (availableKeys === 0) {
         return 'Out of Stock';
     }
@@ -15,95 +15,101 @@ function getStockStatus(availableKeys) {
 }
 
 async function getInventory() {
-    const {
+    const [
         products,
         giftCards,
-        keyCounts,
-    } = await inventoryRepository.getInventoryData();
+        gameKeyCounts,
+    ] = await Promise.all([
+        repository.getProducts(),
+        repository.getGiftCards(),
+        repository.getGameKeyCounts(),
+    ]);
 
-    const keyCountMap = new Map();
+    const productCounts = new Map();
+    const giftCardCounts = new Map();
 
-    for (const item of keyCounts) {
-        const ownerType = item._id?.ownerType;
-        const ownerId = Number(item._id?.ownerId);
-
-        if (!ownerType || Number.isNaN(ownerId)) {
-            continue;
-        }
-
-        keyCountMap.set(
-            `${ownerType}:${ownerId}`,
-            {
-                totalKeys: item.totalKeys || 0,
-                availableKeys: item.availableKeys || 0,
-            }
-        );
-    }
-
-    const allItems = [
-        ...products,
-        ...giftCards,
-    ];
-
-    const inventoryProducts = allItems.map((item) => {
-        const ownerType =
-            item.type === 'gift-card'
-                ? 'gift-card'
-                : 'product';
-
-        const ownerId = Number(item.legacyId);
-
-        const counts =
-            keyCountMap.get(`${ownerType}:${ownerId}`) || {
-                totalKeys: 0,
-                availableKeys: 0,
-            };
-
-        const totalKeys = counts.totalKeys;
-        const availableKeys = counts.availableKeys;
-        const soldKeys = totalKeys - availableKeys;
-
-        return {
-            id: item.legacyId,
-            title: item.title || '',
-            type: item.type || ownerType,
-            image: item.image || null,
-            region: item.region || null,
-            card_region: item.card_region || null,
-            workPlatform: item.workPlatform || null,
-            item: item.item || null,
-
-            availableKeys,
-            soldKeys,
+    for (const item of gameKeyCounts) {
+        const {
+            productId,
+            giftCardId,
             totalKeys,
+            availableKeys,
+        } = item;
 
-            status: getStockStatus(availableKeys),
-        };
-    });
-
-    let totalKeys = 0;
-    let lowStock = 0;
-    let outOfStock = 0;
-
-    for (const product of inventoryProducts) {
-        totalKeys += product.totalKeys;
-
-        if (product.status === 'Low Stock') {
-            lowStock++;
+        if (productId) {
+            productCounts.set(
+                productId.toString(),
+                {
+                    totalKeys,
+                    availableKeys,
+                    soldKeys:
+                        totalKeys - availableKeys,
+                }
+            );
         }
 
-        if (product.status === 'Out of Stock') {
-            outOfStock++;
+        if (giftCardId) {
+            giftCardCounts.set(
+                giftCardId.toString(),
+                {
+                    totalKeys,
+                    availableKeys,
+                    soldKeys:
+                        totalKeys - availableKeys,
+                }
+            );
         }
     }
 
-    return {
-        totalProducts: inventoryProducts.length,
-        totalKeys,
-        lowStock,
-        outOfStock,
-        products: inventoryProducts,
-    };
+    const productInventory = products.map(
+        (product) => {
+            const counts =
+                productCounts.get(
+                    product._id.toString()
+                ) || {
+                    totalKeys: 0,
+                    availableKeys: 0,
+                    soldKeys: 0,
+                };
+
+            return {
+                ...product,
+                totalKeys: counts.totalKeys,
+                availableKeys: counts.availableKeys,
+                soldKeys: counts.soldKeys,
+                status: getStatus(
+                    counts.availableKeys
+                ),
+            };
+        }
+    );
+
+    const giftCardInventory =
+        giftCards.map((giftCard) => {
+            const counts =
+                giftCardCounts.get(
+                    giftCard._id.toString()
+                ) || {
+                    totalKeys: 0,
+                    availableKeys: 0,
+                    soldKeys: 0,
+                };
+
+            return {
+                ...giftCard,
+                totalKeys: counts.totalKeys,
+                availableKeys: counts.availableKeys,
+                soldKeys: counts.soldKeys,
+                status: getStatus(
+                    counts.availableKeys
+                ),
+            };
+        });
+
+    return [
+        ...productInventory,
+        ...giftCardInventory,
+    ];
 }
 
 module.exports = {

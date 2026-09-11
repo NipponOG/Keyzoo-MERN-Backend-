@@ -1,30 +1,22 @@
 'use strict';
 
 function mapMediaImage(media) {
-    if (!media) {
-        return null;
-    }
+    if (!media) return null;
 
     return {
         url: media.url ?? null,
-
         thumbnail: media.formats?.thumbnail?.url ?? null,
         small: media.formats?.small?.url ?? null,
         medium: media.formats?.medium?.url ?? null,
         large: media.formats?.large?.url ?? null,
-
         width: media.width ?? null,
         height: media.height ?? null,
-
         alt: media.alternativeText ?? null,
     };
 }
 
 function mapProduct(product) {
     return {
-        legacyId: product.id,
-        legacyDocumentId: product.documentId,
-
         type: 'product',
 
         title: product.title ?? '',
@@ -32,15 +24,12 @@ function mapProduct(product) {
 
         image: mapMediaImage(product.image),
         gallery: Array.isArray(product.gallery)
-            ? product.gallery
-                .map(mapMediaImage)
-                .filter(Boolean)
+            ? product.gallery.map(mapMediaImage).filter(Boolean)
             : [],
 
         card_region: product.card_region ?? null,
-
-        price: product.price ?? null,
-        discountPrice: product.discountPrice ?? null,
+        price: product.price ?? 0,
+        discountPrice: product.discountPrice ?? 0,
 
         notice: product.notice ?? null,
         description: product.description ?? null,
@@ -50,39 +39,44 @@ function mapProduct(product) {
         developer: product.developer ?? null,
         releaseDate: product.releaseDate ?? null,
 
+        minimumRequirement: product.minimumRequirement ?? null,
+        recommendedRequirement: product.recommendedRequirement ?? null,
+
+        audio_language: product.audio_language ?? [],
+        interface_language: product.interface_language ?? [],
+        subtitles_language: product.subtitles_language ?? [],
+
+        age: product.age ?? null,
         region: product.region ?? null,
+        platform: product.platform ?? null,
+        category: product.category ?? null,
         workPlatform: product.workPlatform ?? null,
 
-        item: product.item ?? null,
+        item: product.item ?? 'DIGITAL KEY',
+        item_type: product.item_type ?? 'GAME',
+
         editiondescription: product.editiondescription ?? null,
 
-        Available: product.Available ?? false,
+        Available: product.Available ?? true,
+        stock_stetus: product.stock_stetus ?? 'Availavle',
 
-        var_title: product.var_title ?? null,
         isBestSeller: product.isBestSeller ?? false,
         isGiftCard: false,
-
         hideRecomend: product.hideRecomend ?? false,
         psn: product.psn ?? false,
 
         platformIcons: product.platformIcons ?? null,
         platform_image: product.platform_image ?? null,
+        platform_icon_image: product.platform_icon_image ?? null,
 
         rating: product.rating ?? 0,
 
-        platform: product.platform ?? null,
-        category: product.category ?? null,
+        relatedProducts: product.relatedProducts ?? [],
+        relatedRegionProducts: product.relatedRegionProducts ?? [],
 
-        item_type: product.item_type ?? null,
-
-        lowStockAlertSent: product.lowStockAlertSent ?? false,
-
-        locale: product.locale ?? 'en',
-
-        publishedAt: product.publishedAt ?? null,
-
-        legacyCreatedAt: product.createdAt ?? null,
-        legacyUpdatedAt: product.updatedAt ?? null,
+        var_title: product.var_title ?? null,
+        seo: product.seo ?? null,
+        Tags: product.Tags ?? [],
 
         createdAt: product.createdAt
             ? new Date(product.createdAt)
@@ -91,33 +85,24 @@ function mapProduct(product) {
         updatedAt: product.updatedAt
             ? new Date(product.updatedAt)
             : new Date(),
-
-        migratedAt: new Date(),
     };
 }
 
 function mapGiftCard(giftCard) {
     return {
-        legacyId: giftCard.id,
-        legacyDocumentId: giftCard.documentId,
-
         type: 'gift-card',
 
         title: giftCard.title ?? '',
         slug: giftCard.slug ?? '',
 
         image: mapMediaImage(giftCard.image),
-
         gallery: Array.isArray(giftCard.gallery)
-            ? giftCard.gallery
-                .map(mapMediaImage)
-                .filter(Boolean)
+            ? giftCard.gallery.map(mapMediaImage).filter(Boolean)
             : [],
 
         card_region: giftCard.card_region ?? null,
-
-        price: giftCard.price ?? null,
-        discountPrice: giftCard.discountPrice ?? null,
+        price: giftCard.price ?? 0,
+        discountPrice: giftCard.discountPrice ?? 0,
 
         notice: giftCard.notice ?? null,
         description: giftCard.description ?? null,
@@ -127,40 +112,44 @@ function mapGiftCard(giftCard) {
         developer: giftCard.developer ?? null,
         releaseDate: giftCard.releaseDate ?? null,
 
+        minimumRequirement: giftCard.minimumRequirement ?? null,
+        recommendedRequirement: giftCard.recommendedRequirement ?? null,
+
+        audio_language: giftCard.audio_language ?? [],
+        interface_language: giftCard.interface_language ?? [],
+        subtitles_language: giftCard.subtitles_language ?? [],
+
+        age: giftCard.age ?? null,
         region: giftCard.region ?? null,
+        platform: giftCard.platform ?? null,
+        category: giftCard.category ?? null,
         workPlatform: giftCard.workPlatform ?? null,
 
-        item: giftCard.item ?? null,
+        item: giftCard.item ?? 'DIGITAL KEY',
         item_type: giftCard.item_type ?? 'GIFT CARD',
 
         editiondescription: giftCard.editiondescription ?? null,
 
-        Available: giftCard.Available ?? false,
-
-        var_title: giftCard.var_title ?? null,
+        Available: giftCard.Available ?? true,
+        stock_stetus: giftCard.stock_stetus ?? 'Availavle',
 
         isBestSeller: giftCard.isBestSeller ?? false,
         isGiftCard: true,
-
         hideRecomend: giftCard.hideRecomend ?? false,
         psn: giftCard.psn ?? false,
 
         platformIcons: giftCard.platformIcons ?? null,
         platform_image: giftCard.platform_image ?? null,
+        platform_icon_image: giftCard.platform_icon_image ?? null,
 
         rating: giftCard.rating ?? 0,
 
-        platform: giftCard.platform ?? null,
-        category: giftCard.category ?? 'gift-card',
+        relatedProducts: giftCard.relatedProducts ?? [],
+        relatedRegionProducts: giftCard.relatedRegionProducts ?? [],
 
-        lowStockAlertSent: giftCard.lowStockAlertSent ?? false,
-
-        locale: giftCard.locale ?? 'en',
-
-        publishedAt: giftCard.publishedAt ?? null,
-
-        legacyCreatedAt: giftCard.createdAt ?? null,
-        legacyUpdatedAt: giftCard.updatedAt ?? null,
+        var_title: giftCard.var_title ?? null,
+        seo: giftCard.seo ?? null,
+        Tags: giftCard.Tags ?? [],
 
         createdAt: giftCard.createdAt
             ? new Date(giftCard.createdAt)
@@ -169,33 +158,26 @@ function mapGiftCard(giftCard) {
         updatedAt: giftCard.updatedAt
             ? new Date(giftCard.updatedAt)
             : new Date(),
-
-        migratedAt: new Date(),
     };
 }
 
-function mapGameKey(gameKey) {
-    let ownerType = null;
-    let ownerId = null;
+function mapGameKey(gameKey, productIdMap, giftCardIdMap) {
+    let productId = null;
+    let giftCardId = null;
 
-    if (gameKey.product) {
-        ownerType = 'product';
-        ownerId = gameKey.product.id;
+    if (gameKey.product?.id) {
+        productId = productIdMap.get(gameKey.product.id) ?? null;
     }
 
-    if (gameKey.giftCard) {
-        ownerType = 'gift-card';
-        ownerId = gameKey.giftCard.id;
+    if (gameKey.giftCard?.id) {
+        giftCardId = giftCardIdMap.get(gameKey.giftCard.id) ?? null;
     }
 
     return {
-        legacyId: gameKey.id,
-        legacyDocumentId: gameKey.documentId,
+        code: gameKey.code ?? '',
 
-        code: gameKey.code,
-
-        ownerType,
-        ownerId,
+        productId,
+        giftCardId,
 
         isAvailable: gameKey.isAvailable ?? true,
 
@@ -206,9 +188,6 @@ function mapGameKey(gameKey) {
         batchId: gameKey.batchId ?? null,
         notes: gameKey.notes ?? null,
 
-        legacyCreatedAt: gameKey.createdAt ?? null,
-        legacyUpdatedAt: gameKey.updatedAt ?? null,
-
         createdAt: gameKey.createdAt
             ? new Date(gameKey.createdAt)
             : new Date(),
@@ -216,8 +195,6 @@ function mapGameKey(gameKey) {
         updatedAt: gameKey.updatedAt
             ? new Date(gameKey.updatedAt)
             : new Date(),
-
-        migratedAt: new Date(),
     };
 }
 

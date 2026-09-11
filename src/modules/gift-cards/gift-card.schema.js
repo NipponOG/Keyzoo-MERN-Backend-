@@ -9,7 +9,7 @@ function createGiftCardDocument(data = {}) {
     const now = new Date();
 
     return {
-        legacyId: data.legacyId ?? null,
+        // legacyId: data.legacyId ?? null,
         type: 'gift-card',
 
         title: data.title ?? '',

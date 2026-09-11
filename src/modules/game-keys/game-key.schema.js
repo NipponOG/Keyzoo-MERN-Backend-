@@ -9,13 +9,10 @@ function createGameKeyDocument(data = {}) {
     const now = new Date();
 
     return {
-        legacyId: data.legacyId ?? null,
-        legacyDocumentId: data.legacyDocumentId ?? null,
-
         code: data.code ?? '',
 
-        ownerType: data.ownerType ?? null,
-        ownerId: data.ownerId ?? null,
+        productId: data.productId ?? null,
+        giftCardId: data.giftCardId ?? null,
 
         isAvailable: data.isAvailable ?? true,
 
@@ -26,13 +23,8 @@ function createGameKeyDocument(data = {}) {
         batchId: data.batchId ?? null,
         notes: data.notes ?? null,
 
-        legacyCreatedAt: data.legacyCreatedAt ?? null,
-        legacyUpdatedAt: data.legacyUpdatedAt ?? null,
-
         createdAt: data.createdAt ?? now,
         updatedAt: now,
-
-        migratedAt: data.migratedAt ?? null,
     };
 }
 

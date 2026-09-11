@@ -18,65 +18,74 @@ function getGameKeysCollection() {
     return getDatabase().collection(GAME_KEYS_COLLECTION);
 }
 
-async function getInventoryData() {
-    const [products, giftCards, keyCounts] = await Promise.all([
-        getProductsCollection()
-            .find({})
-            .project({
-                legacyId: 1,
-                title: 1,
-                type: 1,
-                image: 1,
-                region: 1,
-                card_region: 1,
-                workPlatform: 1,
-                item: 1,
-            })
-            .toArray(),
+async function getProducts() {
+    return getProductsCollection()
+        .find({})
+        .sort({ createdAt: -1 })
+        .toArray();
+}
 
-        getGiftCardsCollection()
-            .find({})
-            .project({
-                legacyId: 1,
-                title: 1,
-                type: 1,
-                image: 1,
-                region: 1,
-                card_region: 1,
-                workPlatform: 1,
-                item: 1,
-            })
-            .toArray(),
+async function getGiftCards() {
+    return getGiftCardsCollection()
+        .find({})
+        .sort({ createdAt: -1 })
+        .toArray();
+}
 
-        getGameKeysCollection()
-            .aggregate([
-                {
-                    $group: {
-                        _id: {
-                            ownerType: '$ownerType',
-                            ownerId: '$ownerId',
-                        },
-                        totalKeys: {
-                            $sum: 1,
-                        },
-                        availableKeys: {
-                            $sum: {
-                                $cond: ['$isAvailable', 1, 0],
+async function getGameKeyCounts() {
+    return getGameKeysCollection()
+        .aggregate([
+            {
+                $match: {
+                    $or: [
+                        {
+                            productId: {
+                                $type: 'objectId',
                             },
+                        },
+                        {
+                            giftCardId: {
+                                $type: 'objectId',
+                            },
+                        },
+                    ],
+                },
+            },
+            {
+                $project: {
+                    productId: 1,
+                    giftCardId: 1,
+                    isAvailable: 1,
+                },
+            },
+            {
+                $group: {
+                    _id: {
+                        productId: '$productId',
+                        giftCardId: '$giftCardId',
+                    },
+
+                    totalKeys: {
+                        $sum: 1,
+                    },
+
+                    availableKeys: {
+                        $sum: {
+                            $cond: [
+                                '$isAvailable',
+                                1,
+                                0,
+                            ],
                         },
                     },
                 },
-            ])
-            .toArray(),
-    ]);
-
-    return {
-        products,
-        giftCards,
-        keyCounts,
-    };
+            },
+        ])
+        .toArray();
 }
 
 module.exports = {
-    getInventoryData,
+    getProducts,
+    getGiftCards,
+    getGameKeyCounts,
 };
