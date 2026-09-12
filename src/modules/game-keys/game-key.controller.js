@@ -40,8 +40,8 @@ async function getGameKeysByOwner(req, res, next) {
 async function uploadGameKeys(req, res, next) {
     try {
         const {
-            productId,
-            giftCardId,
+            productId = null,
+            giftCardId = null,
             keys,
         } = req.body;
 
@@ -63,23 +63,39 @@ async function uploadGameKeys(req, res, next) {
             throw error;
         }
 
-        const ownerType = productId
-            ? 'product'
-            : 'gift-card';
-
-        const ownerId = productId || giftCardId;
-
-        const gameKeys =
-            await service.uploadGameKeys({
-                ownerType,
-                ownerId,
-                keys,
-            });
+        const gameKeys = await service.uploadGameKeys({
+            productId,
+            giftCardId,
+            keys,
+        });
 
         res.status(201).json({
             success: true,
             message: `${gameKeys.length} Game Key(s) uploaded successfully`,
+            uploaded: gameKeys.length,
+            duplicates: 0,
             data: gameKeys,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+async function updateGameKey(req, res, next) {
+    try {
+        const { id } = req.params;
+        const { code } = req.body;
+
+        const gameKey =
+            await service.updateGameKey(
+                id,
+                code
+            );
+
+        res.json({
+            success: true,
+            message: 'Game Key updated successfully',
+            data: gameKey,
         });
     } catch (error) {
         next(error);
@@ -139,11 +155,8 @@ async function assignAvailableGameKey(req, res, next) {
 
         const gameKey =
             await service.assignAvailableGameKey({
-                ownerType: productId
-                    ? 'product'
-                    : 'gift-card',
-
-                ownerId: productId || giftCardId,
+                productId,
+                giftCardId,
             });
 
         if (!gameKey) {
@@ -168,5 +181,6 @@ module.exports = {
     getGameKeysByOwner,
     uploadGameKeys,
     deleteGameKey,
+    updateGameKey,
     assignAvailableGameKey,
 };

@@ -164,6 +164,30 @@ async function createMany(gameKeys) {
     );
 }
 
+// Update a game key by MongoDB _id
+async function updateCodeById(id, code) {
+    const objectId = toObjectId(id);
+
+    if (!objectId) {
+        return null;
+    }
+
+    return getCollection().findOneAndUpdate(
+        {
+            _id: objectId,
+        },
+        {
+            $set: {
+                code,
+                updatedAt: new Date(),
+            },
+        },
+        {
+            returnDocument: 'after',
+        }
+    );
+}
+
 // Delete a game key by MongoDB _id
 async function deleteById(id) {
     const objectId = toObjectId(id);
@@ -190,5 +214,6 @@ module.exports = {
     create,
     createMany,
 
+    updateCodeById,
     deleteById,
 };

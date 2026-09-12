@@ -1,5 +1,6 @@
 'use strict';
 
+const { ObjectId } = require('mongodb');
 const repository = require('./game-key.repository');
 
 const VALID_OWNER_TYPES = [
@@ -38,20 +39,39 @@ async function getGameKeyById(id) {
 
 // Assign an available key
 async function assignAvailableGameKey({
-    ownerType,
-    ownerId,
+    productId = null,
+    giftCardId = null,
 }) {
-    validateOwnerType(ownerType);
-    validateMongoId(ownerId, 'owner ID');
+    if (productId && giftCardId) {
+        const error = new Error(
+            'Provide either productId or giftCardId, not both.'
+        );
 
-    if (ownerType === 'product') {
+        error.statusCode = 400;
+        throw error;
+    }
+
+    if (!productId && !giftCardId) {
+        const error = new Error(
+            'Either productId or giftCardId is required.'
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    if (productId) {
+        validateMongoId(productId, 'product ID');
+
         return repository.assignAvailableProductKey(
-            ownerId
+            productId
         );
     }
 
+    validateMongoId(giftCardId, 'gift card ID');
+
     return repository.assignAvailableGiftCardKey(
-        ownerId
+        giftCardId
     );
 }
 
@@ -69,6 +89,75 @@ async function getGameKeysByGiftCardId(giftCardId) {
     return repository.findByGiftCardId(giftCardId);
 }
 
+// Update a game key
+async function updateGameKey(id, code) {
+    validateMongoId(id, 'game key ID');
+
+    if (!code || typeof code !== 'string') {
+        const error = new Error(
+            'Game key is required.'
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const cleanedCode = code.trim();
+
+    if (!cleanedCode) {
+        const error = new Error(
+            'Game key cannot be empty.'
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    // Find the current key
+    const existingKey =
+        await repository.findById(id);
+
+    if (!existingKey) {
+        const error = new Error(
+            'Game key not found.'
+        );
+
+        error.statusCode = 404;
+        throw error;
+    }
+
+    // Do not allow editing a sold key
+    if (!existingKey.isAvailable) {
+        const error = new Error(
+            'Sold game keys cannot be edited.'
+        );
+
+        error.statusCode = 409;
+        throw error;
+    }
+
+    // Check whether another key already uses this code
+    const duplicateKey =
+        await repository.findByCode(cleanedCode);
+
+    if (
+        duplicateKey &&
+        duplicateKey._id.toString() !== id
+    ) {
+        const error = new Error(
+            'A game key with this code already exists.'
+        );
+
+        error.statusCode = 409;
+        throw error;
+    }
+
+    return repository.updateCodeById(
+        id,
+        cleanedCode
+    );
+}
+
 // Delete a game key
 async function deleteGameKey(id) {
     validateMongoId(id, 'game key ID');
@@ -78,12 +167,35 @@ async function deleteGameKey(id) {
 
 // Upload multiple game keys
 async function uploadGameKeys({
-    ownerType,
-    ownerId,
+    productId = null,
+    giftCardId = null,
     keys,
 }) {
-    validateOwnerType(ownerType);
-    validateMongoId(ownerId, 'owner ID');
+    if (productId && giftCardId) {
+        const error = new Error(
+            'A game key cannot belong to both a product and a gift card.'
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    if (!productId && !giftCardId) {
+        const error = new Error(
+            'Either productId or giftCardId is required.'
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    if (productId) {
+        validateMongoId(productId, 'product ID');
+    }
+
+    if (giftCardId) {
+        validateMongoId(giftCardId, 'gift card ID');
+    }
 
     if (!Array.isArray(keys) || keys.length === 0) {
         const error = new Error(
@@ -94,7 +206,6 @@ async function uploadGameKeys({
         throw error;
     }
 
-    // Clean incoming keys
     const cleanedKeys = [
         ...new Set(
             keys
@@ -112,7 +223,7 @@ async function uploadGameKeys({
         throw error;
     }
 
-    // Check whether any codes already exist
+    // Check existing codes
     const existingKeys = [];
 
     for (const code of cleanedKeys) {
@@ -135,19 +246,21 @@ async function uploadGameKeys({
 
     const now = new Date();
 
+    const productObjectId = productId
+        ? new ObjectId(productId)
+        : null;
+
+    const giftCardObjectId = giftCardId
+        ? new ObjectId(giftCardId)
+        : null;
+
     const gameKeyDocuments = cleanedKeys.map(
         (code) => ({
             code,
 
-            productId:
-                ownerType === 'product'
-                    ? ownerId
-                    : null,
+            productId: productObjectId,
 
-            giftCardId:
-                ownerType === 'gift-card'
-                    ? ownerId
-                    : null,
+            giftCardId: giftCardObjectId,
 
             isAvailable: true,
 
@@ -177,4 +290,6 @@ module.exports = {
 
     deleteGameKey,
     uploadGameKeys,
+    
+    updateGameKey,
 };

@@ -19,6 +19,12 @@ router.post(
     controller.uploadGameKeys
 );
 
+router.patch(
+    '/:id',
+    requireAdmin,
+    controller.updateGameKey
+);
+
 router.delete(
     '/:id',
     requireAdmin,
