@@ -14,8 +14,12 @@ const authRoutes = require('./modules/auth/auth.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
 const orderRoutes = require('./modules/orders/order.routes');
 
+const mediaRoutes = require('./modules/media/media.routes');
+
 const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
 const inventoryRoutes = require('./modules/inventory/inventory.routes');
+const productAdminRoutes = require('./modules/products/product.admin.routes');
+const giftCardAdminRoutes = require('./modules/gift-cards/gift-card.admin.routes');
 
 const app = express();
 
@@ -44,6 +48,10 @@ app.use('/api/v1/admin/orders', orderRoutes);
 
 app.use('/api/v1/admin/dashboard', dashboardRoutes);
 app.use('/api/v1/admin/inventory', inventoryRoutes);
+app.use('/api/v1/admin/products', productAdminRoutes);
+app.use('/api/v1/admin/gift-cards', giftCardAdminRoutes);
+
+app.use('/api/v1/admin/media', mediaRoutes);
 
 app.use(errorMiddleware);
 
