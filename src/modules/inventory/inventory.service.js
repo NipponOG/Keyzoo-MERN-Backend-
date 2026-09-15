@@ -2,7 +2,7 @@
 
 const repository = require('./inventory.repository');
 
-function getStatus(availableKeys) {
+function getStockStatus(availableKeys) {
     if (availableKeys === 0) {
         return 'Out of Stock';
     }
@@ -81,7 +81,9 @@ async function getInventory() {
 
             console.log(
                 "MATCHING COUNTS:",
-                productCounts.get(product._id.toString())
+                productCounts.get(
+                    product._id.toString()
+                )
             );
 
             const counts =
@@ -95,10 +97,16 @@ async function getInventory() {
 
             return {
                 ...product,
+
                 totalKeys: counts.totalKeys,
                 availableKeys: counts.availableKeys,
                 soldKeys: counts.soldKeys,
-                status: getStatus(
+
+                // Keep product visibility status untouched.
+                status: product.status ?? 'draft',
+
+                // Inventory status gets its own field.
+                stockStatus: getStockStatus(
                     counts.availableKeys
                 ),
             };
@@ -107,6 +115,7 @@ async function getInventory() {
 
     const giftCardInventory =
         giftCards.map((giftCard) => {
+
             const counts =
                 giftCardCounts.get(
                     giftCard._id.toString()
@@ -118,10 +127,16 @@ async function getInventory() {
 
             return {
                 ...giftCard,
+
                 totalKeys: counts.totalKeys,
                 availableKeys: counts.availableKeys,
                 soldKeys: counts.soldKeys,
-                status: getStatus(
+
+                // Keep gift-card visibility status untouched.
+                status: giftCard.status ?? 'draft',
+
+                // Inventory status gets its own field.
+                stockStatus: getStockStatus(
                     counts.availableKeys
                 ),
             };
@@ -135,17 +150,22 @@ async function getInventory() {
     const totalProducts = inventoryProducts.length;
 
     const totalKeys = inventoryProducts.reduce(
-        (sum, item) => sum + item.totalKeys,
+        (sum, item) =>
+            sum + item.totalKeys,
         0
     );
 
-    const lowStock = inventoryProducts.filter(
-        (item) => item.status === 'Low Stock'
-    ).length;
+    const lowStock =
+        inventoryProducts.filter(
+            (item) =>
+                item.stockStatus === 'Low Stock'
+        ).length;
 
-    const outOfStock = inventoryProducts.filter(
-        (item) => item.status === 'Out of Stock'
-    ).length;
+    const outOfStock =
+        inventoryProducts.filter(
+            (item) =>
+                item.stockStatus === 'Out of Stock'
+        ).length;
 
     return {
         totalProducts,

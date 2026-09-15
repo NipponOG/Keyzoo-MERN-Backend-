@@ -32,7 +32,7 @@ async function getProductBySlug(slug) {
         throw error;
     }
 
-    const product = await repository.findBySlug(slug);
+    const product = await repository.findPublishedBySlug(slug);
 
     if (!product) {
         const error = new Error('Product not found');
@@ -69,6 +69,25 @@ async function getProductVariations(productGroupId) {
     }
 
     return repository.findByGroupId(productGroupId);
+}
+
+async function getPublishedProductVariations(productGroupId) {
+    if (
+        !productGroupId ||
+        !ObjectId.isValid(productGroupId)
+    ) {
+        const error = new Error(
+            'Valid product group ID is required'
+        );
+
+        error.statusCode = 400;
+
+        throw error;
+    }
+
+    return repository.findPublishedByGroupId(
+        productGroupId
+    );
 }
 
 async function createProduct(data = {}) {
@@ -639,6 +658,7 @@ module.exports = {
     getProductBySlug,
     getProductById,
     getProductVariations,
+    getPublishedProductVariations,
     createProduct,
     createProductWithVariations,
     updateProduct,

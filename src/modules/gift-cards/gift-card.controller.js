@@ -43,14 +43,50 @@ async function getGiftCardById(
     }
 }
 
-async function getGiftCardVariations(
+// async function getGiftCardVariations(
+//     req,
+//     res,
+//     next
+// ) {
+//     try {
+//         const giftCards =
+//             await giftCardService.getGiftCardVariations(
+//                 req.params.giftCardGroupId
+//             );
+
+//         res.json({
+//             success: true,
+//             data: giftCards,
+//         });
+//     } catch (error) {
+//         next(error);
+//     }
+// }
+
+async function getGiftCardVariations(req, res, next) {
+    try {
+        const giftCards =
+            await giftCardService.getPublishedGiftCardVariations(
+                req.params.giftCardGroupId
+            );
+
+        res.json({
+            success: true,
+            data: giftCards,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+async function getPublishedGiftCardVariations(
     req,
     res,
     next
 ) {
     try {
         const giftCards =
-            await giftCardService.getGiftCardVariations(
+            await giftCardService.getPublishedGiftCardVariations(
                 req.params.giftCardGroupId
             );
 
@@ -128,6 +164,23 @@ async function updateGiftCard(req, res, next) {
     }
 }
 
+async function deleteGiftCard(req, res, next) {
+    try {
+        const { id } = req.params;
+
+        const result =
+            await giftCardService.deleteGiftCard(id);
+
+        return res.status(200).json({
+            success: true,
+            message: 'Gift card deleted successfully.',
+            data: result,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 module.exports = {
     getGiftCardBySlug,
     getGiftCardById,
@@ -135,4 +188,6 @@ module.exports = {
     createGiftCard,
     createGiftCardWithVariations,
     updateGiftCard,
+    deleteGiftCard,
+    getPublishedGiftCardVariations,
 };

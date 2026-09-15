@@ -39,6 +39,31 @@ async function findBySlug(slug) {
     });
 }
 
+async function findPublishedBySlug(slug) {
+    return getCollection().findOne({
+        slug,
+        type: 'product',
+        status: 'published',
+    });
+}
+
+async function findPublishedByGroupId(productGroupId) {
+    const objectId = toObjectId(productGroupId);
+
+    if (!objectId) {
+        return [];
+    }
+
+    return getCollection()
+        .find({
+            productGroupId: objectId,
+            type: 'product',
+            status: 'published',
+        })
+        .sort({ createdAt: 1 })
+        .toArray();
+}
+
 async function findByGroupId(productGroupId) {
     const objectId = toObjectId(productGroupId);
 
@@ -125,6 +150,8 @@ async function deleteById(id) {
 module.exports = {
     findById,
     findBySlug,
+    findPublishedBySlug,
+    findPublishedByGroupId,
     findByGroupId,
     create,
     updateById,

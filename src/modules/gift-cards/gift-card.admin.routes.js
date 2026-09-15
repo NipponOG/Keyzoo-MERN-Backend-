@@ -38,4 +38,10 @@ router.put(
     controller.updateGiftCard
 );
 
+router.delete(
+    '/:id',
+    requireAdmin,
+    controller.deleteGiftCard
+);
+
 module.exports = router;

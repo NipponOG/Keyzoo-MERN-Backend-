@@ -48,6 +48,26 @@ async function getProductVariations(req, res, next) {
     }
 }
 
+async function getPublishedProductVariations(
+    req,
+    res,
+    next
+) {
+    try {
+        const products =
+            await productService.getPublishedProductVariations(
+                req.params.productGroupId
+            );
+
+        res.json({
+            success: true,
+            data: products,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 async function createProduct(req, res, next) {
     try {
         const product = await productService.createProduct(
@@ -120,6 +140,7 @@ module.exports = {
     getProductBySlug,
     getProductById,
     getProductVariations,
+    getPublishedProductVariations,
     createProduct,
     createProductWithVariations,
     updateProduct,

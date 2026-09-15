@@ -4,6 +4,8 @@ const { ObjectId } = require('mongodb');
 
 const repository = require('./gift-card.repository');
 
+const gameKeyRepository = require('../game-keys/game-key.repository');
+
 function createSlug(value) {
     return String(value)
         .toLowerCase()
@@ -39,8 +41,7 @@ async function getGiftCardBySlug(slug) {
         throw error;
     }
 
-    const giftCard =
-        await repository.findBySlug(slug);
+    const giftCard = await repository.findPublishedBySlug(slug);
 
     if (!giftCard) {
         const error = new Error(
@@ -97,6 +98,27 @@ async function getGiftCardVariations(giftCardGroupId) {
     }
 
     return repository.findByGroupId(
+        giftCardGroupId
+    );
+}
+
+async function getPublishedGiftCardVariations(
+    giftCardGroupId
+) {
+    if (
+        !giftCardGroupId ||
+        !ObjectId.isValid(giftCardGroupId)
+    ) {
+        const error = new Error(
+            'Valid gift card group ID is required'
+        );
+
+        error.statusCode = 400;
+
+        throw error;
+    }
+
+    return repository.findPublishedByGroupId(
         giftCardGroupId
     );
 }
@@ -538,11 +560,73 @@ async function updateGiftCard(id, data = {}) {
     return repository.updateById(id, updateData);
 }
 
+async function deleteGiftCard(id) {
+    if (!id || !ObjectId.isValid(id)) {
+        const error = new Error(
+            'Valid Gift Card ID is required'
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const existingGiftCard =
+        await repository.findById(id);
+
+    if (!existingGiftCard) {
+        const error = new Error(
+            'Gift card not found.'
+        );
+
+        error.statusCode = 404;
+        throw error;
+    }
+
+    // Find keys belonging only to this exact
+    // gift card variation.
+    const gameKeys =
+        await gameKeyRepository.findByGiftCardId(id);
+
+    // Never delete a gift card that has
+    // assigned or sold keys.
+    const assignedKeys = gameKeys.filter(
+        (key) => key.isAvailable === false
+    );
+
+    if (assignedKeys.length > 0) {
+        const error = new Error(
+            'This gift card cannot be deleted because it has assigned or sold game keys.'
+        );
+
+        error.statusCode = 409;
+        throw error;
+    }
+
+    // Delete only available keys belonging
+    // to this exact gift card variation.
+    for (const gameKey of gameKeys) {
+        await gameKeyRepository.deleteById(
+            gameKey._id.toString()
+        );
+    }
+
+    // Delete only this exact gift card variation.
+    const deletedGiftCard =
+        await repository.deleteById(id);
+
+    return {
+        giftCard: deletedGiftCard,
+        deletedGameKeys: gameKeys.length,
+    };
+}
+
 module.exports = {
     getGiftCardBySlug,
     getGiftCardById,
     getGiftCardVariations,
+    getPublishedGiftCardVariations,
     createGiftCard,
     createGiftCardWithVariations,
     updateGiftCard,
+    deleteGiftCard,
 };

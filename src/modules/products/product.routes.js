@@ -5,6 +5,14 @@ const controller = require('./product.controller');
 
 const router = express.Router();
 
-router.get('/:slug', controller.getProductBySlug);
+router.get(
+    '/group/:productGroupId',
+    controller.getPublishedProductVariations
+);
+
+router.get(
+    '/:slug',
+    controller.getProductBySlug
+);
 
 module.exports = router;

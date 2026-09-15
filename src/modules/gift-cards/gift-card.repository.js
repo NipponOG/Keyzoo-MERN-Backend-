@@ -26,6 +26,14 @@ async function findBySlug(slug) {
     });
 }
 
+async function findPublishedBySlug(slug) {
+    return getCollection().findOne({
+        slug,
+        type: 'gift-card',
+        status: 'published',
+    });
+}
+
 async function findById(id) {
     const objectId = toObjectId(id);
 
@@ -50,6 +58,23 @@ async function findByGroupId(giftCardGroupId) {
         .find({
             giftCardGroupId: objectId,
             type: 'gift-card',
+        })
+        .sort({ createdAt: 1 })
+        .toArray();
+}
+
+async function findPublishedByGroupId(giftCardGroupId) {
+    const objectId = toObjectId(giftCardGroupId);
+
+    if (!objectId) {
+        return [];
+    }
+
+    return getCollection()
+        .find({
+            giftCardGroupId: objectId,
+            type: 'gift-card',
+            status: 'published',
         })
         .sort({ createdAt: 1 })
         .toArray();
@@ -114,11 +139,28 @@ async function createMany(giftCards) {
     }));
 }
 
+// Delete a gift card by MongoDB _id
+async function deleteById(id) {
+    const objectId = toObjectId(id);
+
+    if (!objectId) {
+        return null;
+    }
+
+    return getCollection().findOneAndDelete({
+        _id: objectId,
+        type: 'gift-card',
+    });
+}
+
 module.exports = {
     findBySlug,
+    findPublishedBySlug,
     findById,
+    findPublishedByGroupId,
     findByGroupId,
     create,
     updateById,
     createMany,
+    deleteById,
 };
