@@ -343,10 +343,206 @@ async function createGiftCardWithVariations(
     };
 }
 
+async function updateGiftCard(id, data = {}) {
+    const existingGiftCard = await repository.findById(id);
+
+    if (!existingGiftCard) {
+        const error = new Error('Gift card not found.');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    const allowedFields = [
+        'title',
+        'slug',
+        'var_title',
+
+        'price',
+        'discountPrice',
+        'currency',
+
+        'platform',
+        'category',
+        'subCategory',
+        'workPlatform',
+
+        'item',
+        'item_type',
+
+        'region',
+        'card_region',
+
+        'notice',
+        'description',
+        'descriptionkey',
+
+        'publisher',
+        'developer',
+        'releaseDate',
+        'editiondescription',
+        'age',
+
+        'minimumRequirement',
+        'recommendedRequirement',
+
+        'audio_language',
+        'interface_language',
+        'subtitles_language',
+
+        'image',
+        'gallery',
+        'platform_image',
+        'platform_icon_image',
+
+        'status',
+
+        'isBestSeller',
+        'hideRecomend',
+        'psn',
+
+        'rating',
+        'relatedProducts',
+
+        'seo',
+        'Tags',
+    ];
+
+    const updateData = {};
+
+    for (const field of allowedFields) {
+        if (Object.prototype.hasOwnProperty.call(data, field)) {
+            updateData[field] = data[field];
+        }
+    }
+
+    // Validate price
+    if (
+        Object.prototype.hasOwnProperty.call(
+            updateData,
+            'price'
+        )
+    ) {
+        updateData.price = validatePrice(
+            updateData.price,
+            'Price'
+        );
+    }
+
+    // Validate discount price
+    if (
+        Object.prototype.hasOwnProperty.call(
+            updateData,
+            'discountPrice'
+        )
+    ) {
+        updateData.discountPrice = validatePrice(
+            updateData.discountPrice,
+            'Discount price'
+        );
+    }
+
+    // Compare final price values
+    const finalPrice = Object.prototype.hasOwnProperty.call(
+        updateData,
+        'price'
+    )
+        ? updateData.price
+        : Number(existingGiftCard.price ?? 0);
+
+    const finalDiscountPrice =
+        Object.prototype.hasOwnProperty.call(
+            updateData,
+            'discountPrice'
+        )
+            ? updateData.discountPrice
+            : Number(existingGiftCard.discountPrice ?? 0);
+
+    if (finalDiscountPrice > finalPrice) {
+        const error = new Error(
+            'Discount price cannot be greater than price'
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    // Validate title
+    if (
+        Object.prototype.hasOwnProperty.call(
+            updateData,
+            'title'
+        )
+    ) {
+        const title = String(updateData.title).trim();
+
+        if (!title) {
+            const error = new Error(
+                'Gift card title is required'
+            );
+            error.statusCode = 400;
+            throw error;
+        }
+
+        updateData.title = title;
+    }
+
+    // Validate variation title
+    if (
+        Object.prototype.hasOwnProperty.call(
+            updateData,
+            'var_title'
+        )
+    ) {
+        updateData.var_title =
+            updateData.var_title === null
+                ? null
+                : String(updateData.var_title).trim();
+    }
+
+    // Validate slug
+    if (
+        Object.prototype.hasOwnProperty.call(
+            updateData,
+            'slug'
+        )
+    ) {
+        updateData.slug = createSlug(updateData.slug);
+
+        if (!updateData.slug) {
+            const error = new Error(
+                'A valid gift card slug is required'
+            );
+            error.statusCode = 400;
+            throw error;
+        }
+
+        if (updateData.slug !== existingGiftCard.slug) {
+            const existingSlug =
+                await repository.findBySlug(
+                    updateData.slug
+                );
+
+            if (
+                existingSlug &&
+                existingSlug._id.toString() !==
+                existingGiftCard._id.toString()
+            ) {
+                const error = new Error(
+                    `Gift card slug "${updateData.slug}" already exists`
+                );
+                error.statusCode = 409;
+                throw error;
+            }
+        }
+    }
+
+    return repository.updateById(id, updateData);
+}
+
 module.exports = {
     getGiftCardBySlug,
     getGiftCardById,
     getGiftCardVariations,
     createGiftCard,
     createGiftCardWithVariations,
+    updateGiftCard,
 };

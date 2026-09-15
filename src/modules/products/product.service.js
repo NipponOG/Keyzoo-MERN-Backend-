@@ -3,6 +3,7 @@
 const { ObjectId } = require('mongodb');
 
 const repository = require('./product.repository');
+const gameKeyRepository = require('../game-keys/game-key.repository');
 
 function createSlug(value) {
     return String(value)
@@ -397,10 +398,249 @@ async function createProductWithVariations(data = {}) {
     };
 }
 
+async function updateProduct(id, data = {}) {
+    const existingProduct = await repository.findById(id);
+
+    if (!existingProduct) {
+        const error = new Error('Product not found.');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    const allowedFields = [
+        'title',
+        'slug',
+        'var_title',
+
+        'price',
+        'discountPrice',
+        'currency',
+
+        'platform',
+        'category',
+        'subCategory',
+        'workPlatform',
+
+        'item',
+        'item_type',
+
+        'region',
+        'card_region',
+
+        'notice',
+        'description',
+        'descriptionkey',
+
+        'publisher',
+        'developer',
+        'releaseDate',
+        'editiondescription',
+        'age',
+
+        'minimumRequirement',
+        'recommendedRequirement',
+
+        'audio_language',
+        'interface_language',
+        'subtitles_language',
+
+        'image',
+        'gallery',
+        'platform_image',
+        'platform_icon_image',
+
+        'status',
+
+        'isBestSeller',
+        'hideRecomend',
+        'psn',
+
+        'rating',
+        'relatedProducts',
+
+        'seo',
+        'Tags',
+    ];
+
+    const updateData = {};
+
+    for (const field of allowedFields) {
+        if (Object.prototype.hasOwnProperty.call(data, field)) {
+            updateData[field] = data[field];
+        }
+    }
+
+    // Validate price if supplied
+    if (Object.prototype.hasOwnProperty.call(updateData, 'price')) {
+        updateData.price = validatePrice(
+            updateData.price,
+            'Price'
+        );
+    }
+
+    // Validate discount price if supplied
+    if (
+        Object.prototype.hasOwnProperty.call(
+            updateData,
+            'discountPrice'
+        )
+    ) {
+        updateData.discountPrice = validatePrice(
+            updateData.discountPrice,
+            'Discount price'
+        );
+    }
+
+    // Compare final price values
+    const finalPrice = Object.prototype.hasOwnProperty.call(
+        updateData,
+        'price'
+    )
+        ? updateData.price
+        : Number(existingProduct.price ?? 0);
+
+    const finalDiscountPrice =
+        Object.prototype.hasOwnProperty.call(
+            updateData,
+            'discountPrice'
+        )
+            ? updateData.discountPrice
+            : Number(existingProduct.discountPrice ?? 0);
+
+    if (finalDiscountPrice > finalPrice) {
+        const error = new Error(
+            'Discount price cannot be greater than price'
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    // Validate title if supplied
+    if (
+        Object.prototype.hasOwnProperty.call(
+            updateData,
+            'title'
+        )
+    ) {
+        const title = String(updateData.title).trim();
+
+        if (!title) {
+            const error = new Error(
+                'Product title is required'
+            );
+            error.statusCode = 400;
+            throw error;
+        }
+
+        updateData.title = title;
+    }
+
+    // Validate variation title if supplied
+    if (
+        Object.prototype.hasOwnProperty.call(
+            updateData,
+            'var_title'
+        )
+    ) {
+        updateData.var_title =
+            updateData.var_title === null
+                ? null
+                : String(updateData.var_title).trim();
+    }
+
+    // Check slug uniqueness if slug is changed
+    if (
+        Object.prototype.hasOwnProperty.call(
+            updateData,
+            'slug'
+        )
+    ) {
+        updateData.slug = createSlug(updateData.slug);
+
+        if (!updateData.slug) {
+            const error = new Error(
+                'A valid product slug is required'
+            );
+            error.statusCode = 400;
+            throw error;
+        }
+
+        if (updateData.slug !== existingProduct.slug) {
+            const existingSlug = await repository.findBySlug(
+                updateData.slug
+            );
+
+            if (
+                existingSlug &&
+                existingSlug._id.toString() !==
+                existingProduct._id.toString()
+            ) {
+                const error = new Error(
+                    `Product slug "${updateData.slug}" already exists`
+                );
+                error.statusCode = 409;
+                throw error;
+            }
+        }
+    }
+
+    return repository.updateById(id, updateData);
+}
+
+async function deleteProduct(id) {
+    if (!id || !ObjectId.isValid(id)) {
+        const error = new Error('Valid product ID is required');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const existingProduct = await repository.findById(id);
+
+    if (!existingProduct) {
+        const error = new Error('Product not found.');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    // Find keys belonging only to this exact product variation.
+    const gameKeys = await gameKeyRepository.findByProductId(id);
+
+    // Never delete a product that already has assigned/sold keys.
+    const assignedKeys = gameKeys.filter(
+        (key) => key.isAvailable === false
+    );
+
+    if (assignedKeys.length > 0) {
+        const error = new Error(
+            'This product cannot be deleted because it has assigned or sold game keys.'
+        );
+
+        error.statusCode = 409;
+        throw error;
+    }
+
+    // Delete only available keys belonging to this exact product.
+    for (const gameKey of gameKeys) {
+        await gameKeyRepository.deleteById(
+            gameKey._id.toString()
+        );
+    }
+
+    // Delete only this product variation.
+    const deletedProduct = await repository.deleteById(id);
+
+    return {
+        product: deletedProduct,
+        deletedGameKeys: gameKeys.length,
+    };
+}
+
 module.exports = {
     getProductBySlug,
     getProductById,
     getProductVariations,
     createProduct,
     createProductWithVariations,
+    updateProduct,
+    deleteProduct,
 };

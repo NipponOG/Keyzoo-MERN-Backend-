@@ -32,4 +32,10 @@ router.get(
     controller.getGiftCardById
 );
 
+router.put(
+    '/:id',
+    requireAdmin,
+    controller.updateGiftCard
+);
+
 module.exports = router;

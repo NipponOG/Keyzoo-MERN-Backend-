@@ -108,10 +108,31 @@ async function createGiftCardWithVariations(
     }
 }
 
+async function updateGiftCard(req, res, next) {
+    try {
+        const { id } = req.params;
+
+        const updatedGiftCard =
+            await giftCardService.updateGiftCard(
+                id,
+                req.body
+            );
+
+        return res.status(200).json({
+            success: true,
+            message: 'Gift card updated successfully.',
+            data: updatedGiftCard,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 module.exports = {
     getGiftCardBySlug,
     getGiftCardById,
     getGiftCardVariations,
     createGiftCard,
     createGiftCardWithVariations,
+    updateGiftCard,
 };

@@ -81,10 +81,47 @@ async function createProductWithVariations(req, res, next) {
     }
 }
 
+async function updateProduct(req, res, next) {
+    try {
+        const { id } = req.params;
+
+        const updatedProduct = await productService.updateProduct(
+            id,
+            req.body
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: 'Product updated successfully.',
+            data: updatedProduct,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+async function deleteProduct(req, res, next) {
+    try {
+        const { id } = req.params;
+
+        const result = await productService.deleteProduct(id);
+
+        return res.status(200).json({
+            success: true,
+            message: 'Product deleted successfully.',
+            data: result,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 module.exports = {
     getProductBySlug,
     getProductById,
     getProductVariations,
     createProduct,
     createProductWithVariations,
+    updateProduct,
+    deleteProduct,
 };

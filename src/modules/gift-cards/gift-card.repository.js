@@ -68,6 +68,32 @@ async function create(giftCardData) {
     };
 }
 
+async function updateById(id, updateData) {
+    const objectId = toObjectId(id);
+
+    if (!objectId) {
+        return null;
+    }
+
+    const result = await getCollection().findOneAndUpdate(
+        {
+            _id: objectId,
+            type: 'gift-card',
+        },
+        {
+            $set: {
+                ...updateData,
+                updatedAt: new Date(),
+            },
+        },
+        {
+            returnDocument: 'after',
+        }
+    );
+
+    return result;
+}
+
 async function createMany(giftCards) {
     if (
         !Array.isArray(giftCards) ||
@@ -93,5 +119,6 @@ module.exports = {
     findById,
     findByGroupId,
     create,
+    updateById,
     createMany,
 };

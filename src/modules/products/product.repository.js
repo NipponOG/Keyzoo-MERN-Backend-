@@ -66,6 +66,32 @@ async function create(productData) {
     };
 }
 
+async function updateById(id, updateData) {
+    const objectId = toObjectId(id);
+
+    if (!objectId) {
+        return null;
+    }
+
+    const result = await getCollection().findOneAndUpdate(
+        {
+            _id: objectId,
+            type: 'product',
+        },
+        {
+            $set: {
+                ...updateData,
+                updatedAt: new Date(),
+            },
+        },
+        {
+            returnDocument: 'after',
+        }
+    );
+
+    return result;
+}
+
 async function createMany(products) {
     if (!Array.isArray(products) || products.length === 0) {
         return [];
@@ -81,10 +107,27 @@ async function createMany(products) {
     }));
 }
 
+async function deleteById(id) {
+    const objectId = toObjectId(id);
+
+    if (!objectId) {
+        return null;
+    }
+
+    const result = await getCollection().findOneAndDelete({
+        _id: objectId,
+        type: 'product',
+    });
+
+    return result;
+}
+
 module.exports = {
     findById,
     findBySlug,
     findByGroupId,
     create,
+    updateById,
     createMany,
+    deleteById,
 };
