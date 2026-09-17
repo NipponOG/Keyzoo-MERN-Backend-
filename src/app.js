@@ -5,6 +5,9 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 
+const heroBannerRoutes = require('./modules/hero-banners/hero-banner.routes');
+const gameBannerRoutes = require('./modules/game-banners/game-banner.routes');
+
 const productRoutes = require('./modules/products/product.routes');
 const giftCardRoutes = require('./modules/gift-cards/gift-card.routes');
 const gameKeyRoutes = require('./modules/game-keys/game-key.routes');
@@ -12,6 +15,9 @@ const gameKeyAdminRoutes = require('./modules/game-keys/game-key.admin.routes');
 
 const errorMiddleware = require('./middleware/error.middleware');
 const maintenanceMiddleware = require('./middleware/maintenance.middleware');
+
+const heroBannerAdminRoutes = require('./modules/hero-banners/hero-banner.admin.routes');
+const gameBannerAdminRoutes = require('./modules/game-banners/game-banner.admin.routes');
 
 const authRoutes = require('./modules/auth/auth.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
@@ -95,6 +101,16 @@ app.use(
     authRoutes
 );
 
+app.use(
+    '/api/v1/home/hero',
+    heroBannerRoutes
+);
+
+app.use(
+    '/api/v1/home/game-banners',
+    gameBannerRoutes
+);
+
 
 // ─────────────────────────────────────────────
 // Admin routes
@@ -139,6 +155,16 @@ app.use(
 app.use(
     '/api/v1/admin/media',
     mediaRoutes
+);
+
+app.use(
+    '/api/v1/admin/hero-banners',
+    heroBannerAdminRoutes
+);
+
+app.use(
+    '/api/v1/admin/game-banners',
+    gameBannerAdminRoutes
 );
 
 
