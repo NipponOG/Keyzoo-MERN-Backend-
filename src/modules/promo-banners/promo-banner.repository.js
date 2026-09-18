@@ -3,7 +3,7 @@
 const { ObjectId } = require('mongodb');
 const { getDatabase } = require('../../config/database');
 
-const COLLECTION_NAME = 'game_banners';
+const COLLECTION_NAME = 'promo_banners';
 
 function getCollection() {
     return getDatabase().collection(COLLECTION_NAME);
@@ -12,22 +12,14 @@ function getCollection() {
 async function findAll() {
     return getCollection()
         .find({})
-        .sort({
-            sortOrder: 1,
-            createdAt: -1,
-        })
+        .sort({ sortOrder: 1, createdAt: -1 })
         .toArray();
 }
 
 async function findPublished() {
     return getCollection()
-        .find({
-            status: 'published',
-        })
-        .sort({
-            sortOrder: 1,
-            createdAt: -1,
-        })
+        .find({ status: 'published' })
+        .sort({ sortOrder: 1, createdAt: -1 })
         .toArray();
 }
 
@@ -54,7 +46,7 @@ async function updateById(id, updates) {
         return null;
     }
 
-    const result = await getCollection().findOneAndUpdate(
+    return getCollection().findOneAndUpdate(
         {
             _id: new ObjectId(id),
         },
@@ -68,8 +60,6 @@ async function updateById(id, updates) {
             returnDocument: 'after',
         }
     );
-
-    return result;
 }
 
 async function deleteById(id) {

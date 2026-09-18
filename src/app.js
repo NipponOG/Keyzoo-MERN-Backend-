@@ -7,6 +7,8 @@ const morgan = require('morgan');
 
 const heroBannerRoutes = require('./modules/hero-banners/hero-banner.routes');
 const gameBannerRoutes = require('./modules/game-banners/game-banner.routes');
+const promoBannerRoutes = require('./modules/promo-banners/promo-banner.routes');
+const categoryBannerRoutes = require('./modules/category-banners/category-banner.routes');
 
 const productRoutes = require('./modules/products/product.routes');
 const giftCardRoutes = require('./modules/gift-cards/gift-card.routes');
@@ -18,6 +20,8 @@ const maintenanceMiddleware = require('./middleware/maintenance.middleware');
 
 const heroBannerAdminRoutes = require('./modules/hero-banners/hero-banner.admin.routes');
 const gameBannerAdminRoutes = require('./modules/game-banners/game-banner.admin.routes');
+const promoBannerAdminRoutes = require('./modules/promo-banners/promo-banner.admin.routes');
+const categoryBannerAdminRoutes = require('./modules/category-banners/category-banner.admin.routes');
 
 const authRoutes = require('./modules/auth/auth.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
@@ -39,134 +43,55 @@ const app = express();
 // ─────────────────────────────────────────────
 
 app.use(helmet());
-
 app.use(cors());
-
 app.use(morgan('dev'));
-
 app.use(express.json());
-
 app.use(express.urlencoded({ extended: true }));
-
 
 // ─────────────────────────────────────────────
 // Health
 // ─────────────────────────────────────────────
 
-app.get('/api/v1/health', (req, res) => {
-    res.json({
-        success: true,
-        message: 'Keyzoo backend is running',
-    });
-});
-
+app.get('/api/v1/health', (req, res) => { res.json({ success: true, message: 'Keyzoo backend is running',}); });
 
 // ─────────────────────────────────────────────
 // Maintenance status
 // Public GET + Admin PUT
 // ─────────────────────────────────────────────
 
-app.use(
-    '/api/v1/maintenance',
-    maintenanceRoutes
-);
-
+app.use('/api/v1/maintenance', maintenanceRoutes);
 
 // ─────────────────────────────────────────────
 // Customer routes
 // Maintenance protected
 // ─────────────────────────────────────────────
 
-app.use(
-    '/api/v1/products',
-    maintenanceMiddleware,
-    productRoutes
-);
-
-app.use(
-    '/api/v1/gift-cards',
-    maintenanceMiddleware,
-    giftCardRoutes
-);
-
-app.use(
-    '/api/v1/game-keys',
-    maintenanceMiddleware,
-    gameKeyRoutes
-);
-
-app.use(
-    '/api/v1/auth',
-    maintenanceMiddleware,
-    authRoutes
-);
-
-app.use(
-    '/api/v1/home/hero',
-    heroBannerRoutes
-);
-
-app.use(
-    '/api/v1/home/game-banners',
-    gameBannerRoutes
-);
-
+app.use('/api/v1/products', maintenanceMiddleware, productRoutes);
+app.use('/api/v1/gift-cards', maintenanceMiddleware, giftCardRoutes);
+app.use('/api/v1/game-keys', maintenanceMiddleware, gameKeyRoutes);
+app.use('/api/v1/auth', maintenanceMiddleware, authRoutes);
+app.use('/api/v1/home/hero', heroBannerRoutes);
+app.use('/api/v1/home/game-banners', gameBannerRoutes);
+app.use('/api/v1/home/promo-banners', promoBannerRoutes);
+app.use('/api/v1/home/category-banners', categoryBannerRoutes);
 
 // ─────────────────────────────────────────────
 // Admin routes
 // NOT blocked by maintenance mode
 // ─────────────────────────────────────────────
 
-app.use(
-    '/api/v1/admin',
-    adminRoutes
-);
-
-app.use(
-    '/api/v1/admin/game-keys',
-    gameKeyAdminRoutes
-);
-
-app.use(
-    '/api/v1/admin/orders',
-    orderRoutes
-);
-
-app.use(
-    '/api/v1/admin/dashboard',
-    dashboardRoutes
-);
-
-app.use(
-    '/api/v1/admin/inventory',
-    inventoryRoutes
-);
-
-app.use(
-    '/api/v1/admin/products',
-    productAdminRoutes
-);
-
-app.use(
-    '/api/v1/admin/gift-cards',
-    giftCardAdminRoutes
-);
-
-app.use(
-    '/api/v1/admin/media',
-    mediaRoutes
-);
-
-app.use(
-    '/api/v1/admin/hero-banners',
-    heroBannerAdminRoutes
-);
-
-app.use(
-    '/api/v1/admin/game-banners',
-    gameBannerAdminRoutes
-);
-
+app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/admin/game-keys', gameKeyAdminRoutes);
+app.use('/api/v1/admin/orders', orderRoutes);
+app.use('/api/v1/admin/dashboard', dashboardRoutes);
+app.use('/api/v1/admin/inventory', inventoryRoutes);
+app.use('/api/v1/admin/products', productAdminRoutes);
+app.use('/api/v1/admin/gift-cards', giftCardAdminRoutes);
+app.use('/api/v1/admin/media', mediaRoutes);
+app.use('/api/v1/admin/hero-banners', heroBannerAdminRoutes);
+app.use('/api/v1/admin/game-banners', gameBannerAdminRoutes);
+app.use('/api/v1/admin/promo-banners', promoBannerAdminRoutes);
+app.use('/api/v1/admin/category-banners', categoryBannerAdminRoutes);
 
 // ─────────────────────────────────────────────
 // Error handler
