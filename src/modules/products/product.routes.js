@@ -6,6 +6,11 @@ const controller = require('./product.controller');
 const router = express.Router();
 
 router.get(
+    '/recommended-products',
+    controller.getPublishedRecommendedProducts
+);
+
+router.get(
     '/group/:productGroupId',
     controller.getPublishedProductVariations
 );

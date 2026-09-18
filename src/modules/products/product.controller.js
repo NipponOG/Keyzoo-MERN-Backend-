@@ -136,6 +136,25 @@ async function deleteProduct(req, res, next) {
     }
 }
 
+async function getPublishedRecommendedProducts(req, res, next) {
+    try {
+        const limit = Math.min(
+            Math.max(Number(req.query.limit) || 12, 1),
+            50
+        );
+
+        const products =
+            await productService.getPublishedRecommendedProducts(limit);
+
+        return res.json({
+            success: true,
+            data: products,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 module.exports = {
     getProductBySlug,
     getProductById,
@@ -145,4 +164,5 @@ module.exports = {
     createProductWithVariations,
     updateProduct,
     deleteProduct,
+    getPublishedRecommendedProducts,
 };

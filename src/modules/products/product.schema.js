@@ -85,7 +85,7 @@ function createProductDocument(data = {}) {
 
         // Product flags
         isBestSeller: data.isBestSeller ?? false,
-        hideRecomend: data.hideRecomend ?? false,
+        isRecommended: data.isRecommended ?? false,
         psn: data.psn ?? false,
 
         // Rating

@@ -207,7 +207,7 @@ async function createProduct(data = {}) {
 
         // Flags
         isBestSeller: data.isBestSeller ?? false,
-        hideRecomend: data.hideRecomend ?? false,
+        isRecommended: data.isRecommended ?? false,
         psn: data.psn ?? false,
 
         // Rating
@@ -378,7 +378,7 @@ async function createProductWithVariations(data = {}) {
 
             // Flags
             isBestSeller: data.isBestSeller ?? false,
-            hideRecomend: data.hideRecomend ?? false,
+            isRecommended: data.isRecommended ?? false,
             psn: data.psn ?? false,
 
             // Rating
@@ -471,7 +471,7 @@ async function updateProduct(id, data = {}) {
         'status',
 
         'isBestSeller',
-        'hideRecomend',
+        'isRecommended',
         'psn',
 
         'rating',
@@ -654,6 +654,10 @@ async function deleteProduct(id) {
     };
 }
 
+async function getPublishedRecommendedProducts(limit = 12) {
+    return repository.findPublishedRecommended(limit);
+}
+
 module.exports = {
     getProductBySlug,
     getProductById,
@@ -663,4 +667,5 @@ module.exports = {
     createProductWithVariations,
     updateProduct,
     deleteProduct,
+    getPublishedRecommendedProducts,
 };
