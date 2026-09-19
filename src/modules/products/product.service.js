@@ -204,6 +204,7 @@ async function createProduct(data = {}) {
 
         // State
         status: data.status ?? "draft",
+        available: data.available ?? false,
 
         // Flags
         isBestSeller: data.isBestSeller ?? false,
@@ -375,6 +376,7 @@ async function createProductWithVariations(data = {}) {
 
             // State
             status: data.status ?? "draft",
+            available: data.available ?? false,
 
             // Flags
             isBestSeller: data.isBestSeller ?? false,
@@ -469,7 +471,7 @@ async function updateProduct(id, data = {}) {
         'platform_icon_image',
 
         'status',
-
+        'available',
         'isBestSeller',
         'isRecommended',
         'psn',
@@ -658,6 +660,38 @@ async function getPublishedRecommendedProducts(limit = 12) {
     return repository.findPublishedRecommended(limit);
 }
 
+async function getPublishedBestSellingProducts(limit = 30) {
+    
+    const products = await repository.findPublishedBestSelling(limit);
+
+    const productsWithStock = await Promise.all(
+        products.map(async (product) => {
+            const gameKeys =
+                await gameKeyRepository.findByProductId(
+                    product._id.toString()
+                );
+
+            const availableKeys = gameKeys.filter(
+                (key) => key.isAvailable === true
+            ).length;
+
+            const isAvailable =
+                product.available === true && availableKeys > 0;
+
+            return {
+                ...product,
+                available: isAvailable,
+                availableKeys,
+                stockStatus: isAvailable
+                    ? 'Healthy'
+                    : 'Out of Stock',
+            };
+        })
+    );
+
+    return productsWithStock;
+}
+
 module.exports = {
     getProductBySlug,
     getProductById,
@@ -668,4 +702,5 @@ module.exports = {
     updateProduct,
     deleteProduct,
     getPublishedRecommendedProducts,
+    getPublishedBestSellingProducts
 };

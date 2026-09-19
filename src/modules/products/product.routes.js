@@ -11,6 +11,11 @@ router.get(
 );
 
 router.get(
+    '/best-selling',
+    controller.getPublishedBestSellingProducts
+);
+
+router.get(
     '/group/:productGroupId',
     controller.getPublishedProductVariations
 );

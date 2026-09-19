@@ -155,6 +155,25 @@ async function getPublishedRecommendedProducts(req, res, next) {
     }
 }
 
+async function getPublishedBestSellingProducts(req, res, next) {
+    try {
+        const limit = Math.min(
+            Math.max(Number(req.query.limit) || 30, 1),
+            50
+        );
+
+        const products =
+            await productService.getPublishedBestSellingProducts(limit);
+
+        return res.json({
+            success: true,
+            data: products,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 module.exports = {
     getProductBySlug,
     getProductById,
@@ -165,4 +184,5 @@ module.exports = {
     updateProduct,
     deleteProduct,
     getPublishedRecommendedProducts,
+    getPublishedBestSellingProducts,
 };

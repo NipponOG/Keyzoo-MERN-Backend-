@@ -78,6 +78,20 @@ async function findPublishedRecommended(limit = 12) {
         .toArray();
 }
 
+async function findPublishedBestSelling(limit = 30) {
+    return getCollection()
+        .find({
+            type: 'product',
+            status: 'published',
+            isBestSeller: true,
+        })
+        .sort({
+            createdAt: -1,
+        })
+        .limit(limit)
+        .toArray();
+}
+
 async function findByGroupId(productGroupId) {
     const objectId = toObjectId(productGroupId);
 
@@ -167,6 +181,7 @@ module.exports = {
     findPublishedBySlug,
     findPublishedByGroupId,
     findPublishedRecommended,
+    findPublishedBestSelling,
     findByGroupId,
     create,
     updateById,

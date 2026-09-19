@@ -82,6 +82,7 @@ function createProductDocument(data = {}) {
 
         // Product state
         status: data.status ?? 'draft',
+        available: data.available ?? false,
 
         // Product flags
         isBestSeller: data.isBestSeller ?? false,
