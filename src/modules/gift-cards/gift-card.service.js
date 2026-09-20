@@ -37,7 +37,6 @@ async function getGiftCardBySlug(slug) {
         );
 
         error.statusCode = 400;
-
         throw error;
     }
 
@@ -49,11 +48,10 @@ async function getGiftCardBySlug(slug) {
         );
 
         error.statusCode = 404;
-
         throw error;
     }
 
-    return giftCard;
+    return addEffectiveAvailability(giftCard);
 }
 
 async function getGiftCardById(id) {
@@ -97,8 +95,13 @@ async function getGiftCardVariations(giftCardGroupId) {
         throw error;
     }
 
-    return repository.findByGroupId(
-        giftCardGroupId
+    const giftCards =
+        await repository.findByGroupId(
+            giftCardGroupId
+        );
+
+    return Promise.all(
+        giftCards.map(addEffectiveAvailability)
     );
 }
 
@@ -118,8 +121,13 @@ async function getPublishedGiftCardVariations(
         throw error;
     }
 
-    return repository.findPublishedByGroupId(
-        giftCardGroupId
+    const giftCards =
+        await repository.findPublishedByGroupId(
+            giftCardGroupId
+        );
+
+    return Promise.all(
+        giftCards.map(addEffectiveAvailability)
     );
 }
 
@@ -419,8 +427,9 @@ async function updateGiftCard(id, data = {}) {
         'status',
 
         'isBestSeller',
-        'hideRecomend',
+        'isRecommended',
         'psn',
+        'available',
 
         'rating',
         'relatedProducts',
@@ -620,13 +629,58 @@ async function deleteGiftCard(id) {
     };
 }
 
+async function getPublishedRecommendedGiftCards(limit = 12) {
+    const giftCards =
+        await repository.findPublishedRecommended(limit);
+
+    return Promise.all(
+        giftCards.map(addEffectiveAvailability)
+    );
+}
+
+async function getPublishedBestSellingGiftCards(limit = 30) {
+    const giftCards =
+        await repository.findPublishedBestSelling(limit);
+
+    return Promise.all(
+        giftCards.map(addEffectiveAvailability)
+    );
+}
+
+async function addEffectiveAvailability(giftCard) {
+    const gameKeys =
+        await gameKeyRepository.findByGiftCardId(
+            giftCard._id.toString()
+        );
+
+    const availableKeys = gameKeys.filter(
+        (key) => key.isAvailable === true
+    ).length;
+
+    const isAvailable =
+        giftCard.available === true &&
+        availableKeys > 0;
+
+    return {
+        ...giftCard,
+        available: isAvailable,
+        availableKeys,
+        stockStatus: isAvailable
+            ? 'Healthy'
+            : 'Out of Stock',
+    };
+}
+
 module.exports = {
     getGiftCardBySlug,
     getGiftCardById,
     getGiftCardVariations,
     getPublishedGiftCardVariations,
+    getPublishedRecommendedGiftCards,
+    getPublishedBestSellingGiftCards,
     createGiftCard,
     createGiftCardWithVariations,
+    addEffectiveAvailability,
     updateGiftCard,
     deleteGiftCard,
 };

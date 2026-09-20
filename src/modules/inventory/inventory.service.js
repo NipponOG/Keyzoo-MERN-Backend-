@@ -95,12 +95,18 @@ async function getInventory() {
                     soldKeys: 0,
                 };
 
+            const isAvailable =
+                product.available === true &&
+                counts.availableKeys > 0;
+
             return {
                 ...product,
 
                 totalKeys: counts.totalKeys,
                 availableKeys: counts.availableKeys,
                 soldKeys: counts.soldKeys,
+
+                available: isAvailable,
 
                 // Keep product visibility status untouched.
                 status: product.status ?? 'draft',
@@ -125,12 +131,18 @@ async function getInventory() {
                     soldKeys: 0,
                 };
 
+            const isAvailable =
+                giftCard.available === true &&
+                counts.availableKeys > 0;
+
             return {
                 ...giftCard,
 
                 totalKeys: counts.totalKeys,
                 availableKeys: counts.availableKeys,
                 soldKeys: counts.soldKeys,
+
+                available: isAvailable,
 
                 // Keep gift-card visibility status untouched.
                 status: giftCard.status ?? 'draft',
@@ -176,6 +188,23 @@ async function getInventory() {
     };
 }
 
+async function bulkDeleteItems(items) {
+    if (!Array.isArray(items) || items.length === 0) {
+        throw new Error('No items selected for deletion.');
+    }
+
+    const allowedTypes = ['product', 'gift-card'];
+
+    for (const item of items) {
+        if (!item || !item.id || !allowedTypes.includes(item.type)) {
+            throw new Error('Invalid bulk delete item.');
+        }
+    }
+
+    return repository.bulkDeleteItems(items);
+}
+
 module.exports = {
     getInventory,
+    bulkDeleteItems,
 };

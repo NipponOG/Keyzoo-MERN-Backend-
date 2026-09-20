@@ -43,30 +43,10 @@ async function getGiftCardById(
     }
 }
 
-// async function getGiftCardVariations(
-//     req,
-//     res,
-//     next
-// ) {
-//     try {
-//         const giftCards =
-//             await giftCardService.getGiftCardVariations(
-//                 req.params.giftCardGroupId
-//             );
-
-//         res.json({
-//             success: true,
-//             data: giftCards,
-//         });
-//     } catch (error) {
-//         next(error);
-//     }
-// }
-
 async function getGiftCardVariations(req, res, next) {
     try {
         const giftCards =
-            await giftCardService.getPublishedGiftCardVariations(
+            await giftCardService.getGiftCardVariations(
                 req.params.giftCardGroupId
             );
 
@@ -144,6 +124,44 @@ async function createGiftCardWithVariations(
     }
 }
 
+async function getPublishedRecommendedGiftCards(req, res, next) {
+    try {
+        const limit = Math.min(
+            Math.max(Number(req.query.limit) || 12, 1),
+            50
+        );
+
+        const giftCards =
+            await giftCardService.getPublishedRecommendedGiftCards(limit);
+
+        return res.json({
+            success: true,
+            data: giftCards,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+async function getPublishedBestSellingGiftCards(req, res, next) {
+    try {
+        const limit = Math.min(
+            Math.max(Number(req.query.limit) || 30, 1),
+            50
+        );
+
+        const giftCards =
+            await giftCardService.getPublishedBestSellingGiftCards(limit);
+
+        return res.json({
+            success: true,
+            data: giftCards,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 async function updateGiftCard(req, res, next) {
     try {
         const { id } = req.params;
@@ -185,6 +203,8 @@ module.exports = {
     getGiftCardBySlug,
     getGiftCardById,
     getGiftCardVariations,
+    getPublishedRecommendedGiftCards,
+    getPublishedBestSellingGiftCards,
     createGiftCard,
     createGiftCardWithVariations,
     updateGiftCard,

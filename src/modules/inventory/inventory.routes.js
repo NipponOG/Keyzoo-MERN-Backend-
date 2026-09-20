@@ -7,6 +7,7 @@ const requireAdmin = require('../admin/admin.middleware');
 
 const router = express.Router();
 
+router.delete('/bulk', requireAdmin, controller.bulkDeleteItems);
 router.get('/', requireAdmin, controller.getInventory);
 
 module.exports = router;

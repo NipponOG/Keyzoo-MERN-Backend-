@@ -65,12 +65,13 @@ function createGiftCardDocument(data = {}) {
 
         // Product state
         status: data.status ?? 'draft',
+        available: data.available ?? false,
 
         // Product flags
         isBestSeller: data.isBestSeller ?? false,
-        hideRecomend: data.hideRecomend ?? false,
+        isRecommended: data.isRecommended ?? false,
         psn: data.psn ?? false,
-
+        
         // Rating
         rating: data.rating ?? 0,
 

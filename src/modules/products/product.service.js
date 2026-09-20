@@ -40,7 +40,31 @@ async function getProductBySlug(slug) {
         throw error;
     }
 
-    return product;
+    return addEffectiveAvailability(product);
+}
+
+async function addEffectiveAvailability(product) {
+    const gameKeys =
+        await gameKeyRepository.findByProductId(
+            product._id.toString()
+        );
+
+    const availableKeys = gameKeys.filter(
+        (key) => key.isAvailable === true
+    ).length;
+
+    const isAvailable =
+        product.available === true &&
+        availableKeys > 0;
+
+    return {
+        ...product,
+        available: isAvailable,
+        availableKeys,
+        stockStatus: isAvailable
+            ? 'Healthy'
+            : 'Out of Stock',
+    };
 }
 
 async function getProductById(id) {
@@ -68,7 +92,12 @@ async function getProductVariations(productGroupId) {
         throw error;
     }
 
-    return repository.findByGroupId(productGroupId);
+    const products =
+        await repository.findByGroupId(productGroupId);
+
+    return Promise.all(
+        products.map(addEffectiveAvailability)
+    );
 }
 
 async function getPublishedProductVariations(productGroupId) {
@@ -85,8 +114,13 @@ async function getPublishedProductVariations(productGroupId) {
         throw error;
     }
 
-    return repository.findPublishedByGroupId(
-        productGroupId
+    const products =
+        await repository.findPublishedByGroupId(
+            productGroupId
+        );
+
+    return Promise.all(
+        products.map(addEffectiveAvailability)
     );
 }
 
@@ -657,39 +691,21 @@ async function deleteProduct(id) {
 }
 
 async function getPublishedRecommendedProducts(limit = 12) {
-    return repository.findPublishedRecommended(limit);
+    const products =
+        await repository.findPublishedRecommended(limit);
+
+    return Promise.all(
+        products.map(addEffectiveAvailability)
+    );
 }
 
 async function getPublishedBestSellingProducts(limit = 30) {
-    
-    const products = await repository.findPublishedBestSelling(limit);
+    const products =
+        await repository.findPublishedBestSelling(limit);
 
-    const productsWithStock = await Promise.all(
-        products.map(async (product) => {
-            const gameKeys =
-                await gameKeyRepository.findByProductId(
-                    product._id.toString()
-                );
-
-            const availableKeys = gameKeys.filter(
-                (key) => key.isAvailable === true
-            ).length;
-
-            const isAvailable =
-                product.available === true && availableKeys > 0;
-
-            return {
-                ...product,
-                available: isAvailable,
-                availableKeys,
-                stockStatus: isAvailable
-                    ? 'Healthy'
-                    : 'Out of Stock',
-            };
-        })
+    return Promise.all(
+        products.map(addEffectiveAvailability)
     );
-
-    return productsWithStock;
 }
 
 module.exports = {
@@ -702,5 +718,6 @@ module.exports = {
     updateProduct,
     deleteProduct,
     getPublishedRecommendedProducts,
-    getPublishedBestSellingProducts
+    getPublishedBestSellingProducts,
+    addEffectiveAvailability,
 };

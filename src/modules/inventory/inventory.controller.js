@@ -15,6 +15,24 @@ async function getInventory(req, res, next) {
     }
 }
 
+async function bulkDeleteItems(req, res, next) {
+    try {
+        const { items } = req.body;
+
+        const result =
+            await inventoryService.bulkDeleteItems(items);
+
+        return res.json({
+            success: true,
+            message: 'Bulk delete completed.',
+            ...result,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 module.exports = {
     getInventory,
+    bulkDeleteItems,
 };

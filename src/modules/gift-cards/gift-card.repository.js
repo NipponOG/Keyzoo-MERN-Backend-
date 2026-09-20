@@ -139,6 +139,30 @@ async function createMany(giftCards) {
     }));
 }
 
+async function findPublishedRecommended(limit = 12) {
+    return getCollection()
+        .find({
+            type: 'gift-card',
+            status: 'published',
+            isRecommended: true,
+        })
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .toArray();
+}
+
+async function findPublishedBestSelling(limit = 30) {
+    return getCollection()
+        .find({
+            type: 'gift-card',
+            status: 'published',
+            isBestSeller: true,
+        })
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .toArray();
+}
+
 // Delete a gift card by MongoDB _id
 async function deleteById(id) {
     const objectId = toObjectId(id);
@@ -159,6 +183,8 @@ module.exports = {
     findById,
     findPublishedByGroupId,
     findByGroupId,
+    findPublishedRecommended,
+    findPublishedBestSelling,
     create,
     updateById,
     createMany,
