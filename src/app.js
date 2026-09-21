@@ -11,6 +11,9 @@ const promoBannerRoutes = require('./modules/promo-banners/promo-banner.routes')
 const categoryBannerRoutes = require('./modules/category-banners/category-banner.routes');
 const adBannerRoutes = require('./modules/ad-banners/ad-banner.routes');
 
+const searchRoutes = require('./modules/search/search.routes');
+const newsletterRoutes = require('./modules/newsletter/newsletter.routes');
+
 const productRoutes = require('./modules/products/product.routes');
 const giftCardRoutes = require('./modules/gift-cards/gift-card.routes');
 const gameKeyRoutes = require('./modules/game-keys/game-key.routes');
@@ -68,6 +71,8 @@ app.use('/api/v1/maintenance', maintenanceRoutes);
 // Maintenance protected
 // ─────────────────────────────────────────────
 
+app.use('/api/v1/search', maintenanceMiddleware, searchRoutes);
+app.use('/api/v1/newsletter', maintenanceMiddleware, newsletterRoutes);
 app.use('/api/v1/products', maintenanceMiddleware, productRoutes);
 app.use('/api/v1/gift-cards', maintenanceMiddleware, giftCardRoutes);
 app.use('/api/v1/game-keys', maintenanceMiddleware, gameKeyRoutes);
