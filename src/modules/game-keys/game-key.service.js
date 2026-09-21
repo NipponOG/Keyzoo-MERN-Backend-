@@ -281,6 +281,14 @@ async function uploadGameKeys({
     );
 }
 
+async function bulkDeleteGameKeys(ids) {
+    if (!Array.isArray(ids) || ids.length === 0) {
+        throw new Error('No game keys selected for deletion.');
+    }
+
+    return repository.bulkDeleteByIds(ids);
+}
+
 module.exports = {
     getGameKeyById,
     assignAvailableGameKey,
@@ -290,6 +298,7 @@ module.exports = {
 
     deleteGameKey,
     uploadGameKeys,
-    
+
     updateGameKey,
+    bulkDeleteGameKeys,
 };

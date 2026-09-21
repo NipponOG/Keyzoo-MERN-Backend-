@@ -1,8 +1,7 @@
 'use strict';
 
 const express = require('express');
-
-const controller = require('./game-key.controller');
+const controller = require('./ad-banner.controller');
 const requireAdmin = require('../admin/admin.middleware');
 
 const router = express.Router();
@@ -10,31 +9,31 @@ const router = express.Router();
 router.get(
     '/',
     requireAdmin,
-    controller.getGameKeysByOwner
+    controller.getAdBanners
+);
+
+router.get(
+    '/:id',
+    requireAdmin,
+    controller.getAdBannerById
 );
 
 router.post(
     '/',
     requireAdmin,
-    controller.uploadGameKeys
+    controller.createAdBanner
 );
 
-router.delete(
-    '/bulk',
-    requireAdmin,
-    controller.bulkDeleteGameKeys
-);
-
-router.patch(
+router.put(
     '/:id',
     requireAdmin,
-    controller.updateGameKey
+    controller.updateAdBanner
 );
 
 router.delete(
     '/:id',
     requireAdmin,
-    controller.deleteGameKey
+    controller.deleteAdBanner
 );
 
 module.exports = router;

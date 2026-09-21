@@ -177,10 +177,28 @@ async function assignAvailableGameKey(req, res, next) {
     }
 }
 
+async function bulkDeleteGameKeys(req, res, next) {
+    try {
+        const { ids } = req.body;
+
+        const result =
+            await service.bulkDeleteGameKeys(ids);
+
+        return res.json({
+            success: true,
+            message: 'Bulk game-key deletion completed.',
+            ...result,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 module.exports = {
     getGameKeysByOwner,
     uploadGameKeys,
     deleteGameKey,
     updateGameKey,
     assignAvailableGameKey,
+    bulkDeleteGameKeys,
 };

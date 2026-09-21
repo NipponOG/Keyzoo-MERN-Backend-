@@ -9,6 +9,7 @@ const heroBannerRoutes = require('./modules/hero-banners/hero-banner.routes');
 const gameBannerRoutes = require('./modules/game-banners/game-banner.routes');
 const promoBannerRoutes = require('./modules/promo-banners/promo-banner.routes');
 const categoryBannerRoutes = require('./modules/category-banners/category-banner.routes');
+const adBannerRoutes = require('./modules/ad-banners/ad-banner.routes');
 
 const productRoutes = require('./modules/products/product.routes');
 const giftCardRoutes = require('./modules/gift-cards/gift-card.routes');
@@ -22,6 +23,7 @@ const heroBannerAdminRoutes = require('./modules/hero-banners/hero-banner.admin.
 const gameBannerAdminRoutes = require('./modules/game-banners/game-banner.admin.routes');
 const promoBannerAdminRoutes = require('./modules/promo-banners/promo-banner.admin.routes');
 const categoryBannerAdminRoutes = require('./modules/category-banners/category-banner.admin.routes');
+const adBannerAdminRoutes = require('./modules/ad-banners/ad-banner.admin.routes');
 
 const authRoutes = require('./modules/auth/auth.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
@@ -70,10 +72,11 @@ app.use('/api/v1/products', maintenanceMiddleware, productRoutes);
 app.use('/api/v1/gift-cards', maintenanceMiddleware, giftCardRoutes);
 app.use('/api/v1/game-keys', maintenanceMiddleware, gameKeyRoutes);
 app.use('/api/v1/auth', maintenanceMiddleware, authRoutes);
-app.use('/api/v1/home/hero', heroBannerRoutes);
-app.use('/api/v1/home/game-banners', gameBannerRoutes);
-app.use('/api/v1/home/promo-banners', promoBannerRoutes);
-app.use('/api/v1/home/category-banners', categoryBannerRoutes);
+app.use('/api/v1/home/hero', maintenanceMiddleware, heroBannerRoutes);
+app.use('/api/v1/home/game-banners', maintenanceMiddleware, gameBannerRoutes);
+app.use('/api/v1/home/promo-banners', maintenanceMiddleware, promoBannerRoutes);
+app.use('/api/v1/home/category-banners', maintenanceMiddleware, categoryBannerRoutes);
+app.use('/api/v1/home/ad-banners', maintenanceMiddleware, adBannerRoutes);
 
 // ─────────────────────────────────────────────
 // Admin routes
@@ -92,6 +95,7 @@ app.use('/api/v1/admin/hero-banners', heroBannerAdminRoutes);
 app.use('/api/v1/admin/game-banners', gameBannerAdminRoutes);
 app.use('/api/v1/admin/promo-banners', promoBannerAdminRoutes);
 app.use('/api/v1/admin/category-banners', categoryBannerAdminRoutes);
+app.use('/api/v1/admin/ad-banners', adBannerAdminRoutes);
 
 // ─────────────────────────────────────────────
 // Error handler

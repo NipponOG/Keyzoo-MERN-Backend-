@@ -201,6 +201,54 @@ async function deleteById(id) {
     });
 }
 
+async function bulkDeleteByIds(ids) {
+    const collection = getCollection();
+
+    const objectIds = ids
+        .filter((id) => ObjectId.isValid(id))
+        .map((id) => new ObjectId(id));
+
+    if (objectIds.length === 0) {
+        return {
+            deleted: [],
+            blocked: [],
+        };
+    }
+
+    const keys = await collection
+        .find({
+            _id: { $in: objectIds },
+        })
+        .toArray();
+
+    const deleted = [];
+    const blocked = [];
+
+    for (const key of keys) {
+        if (!key.isAvailable) {
+            blocked.push({
+                id: key._id.toString(),
+                reason: 'Sold or assigned key',
+            });
+
+            continue;
+        }
+
+        await collection.deleteOne({
+            _id: key._id,
+        });
+
+        deleted.push({
+            id: key._id.toString(),
+        });
+    }
+
+    return {
+        deleted,
+        blocked,
+    };
+}
+
 module.exports = {
     findById,
     findByCode,
@@ -216,4 +264,5 @@ module.exports = {
 
     updateCodeById,
     deleteById,
+    bulkDeleteByIds,
 };
