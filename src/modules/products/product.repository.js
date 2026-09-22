@@ -47,6 +47,27 @@ async function findPublishedBySlug(slug) {
     });
 }
 
+async function findPublishedProductDetailBySlug(slug) {
+    const product = await findPublishedBySlug(slug);
+
+    if (!product) {
+        return null;
+    }
+
+    let variations = [];
+
+    if (product.productGroupId) {
+        variations = await findPublishedByGroupId(
+            product.productGroupId.toString()
+        );
+    }
+
+    return {
+        product,
+        variations,
+    };
+}
+
 async function findPublishedByGroupId(productGroupId) {
     const objectId = toObjectId(productGroupId);
 
@@ -179,6 +200,7 @@ module.exports = {
     findById,
     findBySlug,
     findPublishedBySlug,
+    findPublishedProductDetailBySlug,
     findPublishedByGroupId,
     findPublishedRecommended,
     findPublishedBestSelling,

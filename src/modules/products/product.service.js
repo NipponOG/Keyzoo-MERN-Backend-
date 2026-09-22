@@ -43,6 +43,43 @@ async function getProductBySlug(slug) {
     return addEffectiveAvailability(product);
 }
 
+async function getProductDetailBySlug(slug) {
+    if (!slug) {
+        const error = new Error('Product slug is required');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const product = await repository.findPublishedBySlug(slug);
+
+    if (!product) {
+        const error = new Error('Product not found');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    const productWithAvailability =
+        await addEffectiveAvailability(product);
+
+    let variations = [];
+
+    if (product.productGroupId) {
+        const groupProducts =
+            await repository.findPublishedByGroupId(
+                product.productGroupId.toString()
+            );
+
+        variations = await Promise.all(
+            groupProducts.map(addEffectiveAvailability)
+        );
+    }
+
+    return {
+        product: productWithAvailability,
+        variations,
+    };
+}
+
 async function addEffectiveAvailability(product) {
     const gameKeys =
         await gameKeyRepository.findByProductId(
@@ -710,6 +747,7 @@ async function getPublishedBestSellingProducts(limit = 30) {
 
 module.exports = {
     getProductBySlug,
+    getProductDetailBySlug,
     getProductById,
     getProductVariations,
     getPublishedProductVariations,

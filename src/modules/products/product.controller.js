@@ -4,13 +4,13 @@ const productService = require('./product.service');
 
 async function getProductBySlug(req, res, next) {
     try {
-        const product = await productService.getProductBySlug(
+        const result = await productService.getProductDetailBySlug(
             req.params.slug
         );
 
-        res.json({
+        return res.json({
             success: true,
-            data: product,
+            data: result,
         });
     } catch (error) {
         next(error);
