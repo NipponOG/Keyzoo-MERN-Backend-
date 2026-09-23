@@ -210,9 +210,7 @@ async function createGiftCard(data = {}) {
     });
 }
 
-async function createGiftCardWithVariations(
-    data = {}
-) {
+async function createGiftCardWithVariations(data = {}) {
     const title =
         String(data.title || '').trim();
 
@@ -222,7 +220,6 @@ async function createGiftCardWithVariations(
         );
 
         error.statusCode = 400;
-
         throw error;
     }
 
@@ -235,33 +232,98 @@ async function createGiftCardWithVariations(
         );
 
         error.statusCode = 400;
-
         throw error;
     }
 
-    const giftCardGroupId =
-        new ObjectId();
+    const giftCardGroupId = new ObjectId();
 
-    const variationNames = new Set();
-    const giftCards = [];
+    /*
+     * ---------------------------------------------------------
+     * Parent SKU
+     * ---------------------------------------------------------
+     */
 
-    const baseSlug =
-        createSlug(title);
+    const parentRegion =
+        String(data.region || '').trim();
 
-    if (!baseSlug) {
+    if (!parentRegion) {
+        const error = new Error(
+            'Gift Card region is required'
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const parentVarTitle =
+        String(data.var_title || '').trim();
+
+    if (!parentVarTitle) {
+        const error = new Error(
+            'Gift Card variation title is required'
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const parentPrice = validatePrice(
+        data.price ?? 0,
+        'Price'
+    );
+
+    const parentDiscountPrice = validatePrice(
+        data.discountPrice ?? 0,
+        'Discount price'
+    );
+
+    if (parentDiscountPrice > parentPrice) {
+        const error = new Error(
+            'Discount price cannot be greater than price'
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const parentSlug =
+        createSlug(data.slug || title);
+
+    if (!parentSlug) {
         const error = new Error(
             'A valid gift card slug could not be generated'
         );
 
         error.statusCode = 400;
-
         throw error;
     }
+
+    /*
+     * ---------------------------------------------------------
+     * Validate and prepare child SKUs
+     * ---------------------------------------------------------
+     */
+
+    const variationNames = new Set();
+
+    const childGiftCards = [];
+
+    const generatedSlugs = new Set([
+        parentSlug,
+    ]);
+
+    /*
+     * Parent itself is a valid SKU combination.
+     */
+    const parentCombination =
+        `${parentRegion.toLowerCase()}::${parentVarTitle.toLowerCase()}`;
+
+    variationNames.add(parentCombination);
 
     for (const variation of data.variations) {
         const varTitle =
             String(
-                variation.var_title || ''
+                variation?.var_title || ''
             ).trim();
 
         if (!varTitle) {
@@ -270,12 +332,27 @@ async function createGiftCardWithVariations(
             );
 
             error.statusCode = 400;
+            throw error;
+        }
 
+        const region =
+            String(
+                variation?.region ||
+                data.region ||
+                ''
+            ).trim();
+
+        if (!region) {
+            const error = new Error(
+                `Gift card variation "${varTitle}" must have a region`
+            );
+
+            error.statusCode = 400;
             throw error;
         }
 
         const normalizedVariationName =
-            varTitle.toLowerCase();
+            `${region.toLowerCase()}::${varTitle.toLowerCase()}`;
 
         if (
             variationNames.has(
@@ -283,11 +360,10 @@ async function createGiftCardWithVariations(
             )
         ) {
             const error = new Error(
-                `Duplicate variation "${varTitle}"`
+                `Duplicate gift card variation "${region} / ${varTitle}"`
             );
 
             error.statusCode = 400;
-
             throw error;
         }
 
@@ -295,81 +371,236 @@ async function createGiftCardWithVariations(
             normalizedVariationName
         );
 
+        const variationTitle =
+            String(
+                variation.title ||
+                title
+            ).trim();
+
+        if (!variationTitle) {
+            const error = new Error(
+                `Gift card title is required for "${varTitle}"`
+            );
+
+            error.statusCode = 400;
+            throw error;
+        }
+
         const price = validatePrice(
             variation.price ?? 0,
-            `Price for ${varTitle}`
+            `Price for ${variationTitle}`
         );
 
         const discountPrice =
             validatePrice(
                 variation.discountPrice ?? 0,
-                `Discount price for ${varTitle}`
+                `Discount price for ${variationTitle}`
             );
 
         if (discountPrice > price) {
             const error = new Error(
-                `Discount price cannot be greater than price for ${varTitle}`
+                `Discount price cannot be greater than price for ${variationTitle}`
             );
 
             error.statusCode = 400;
-
             throw error;
         }
 
-        const variationSlug =
-            createSlug(varTitle);
+        /*
+         * Child slug:
+         * use manually entered slug when supplied,
+         * otherwise generate from child title.
+         */
+        let childSlug =
+            createSlug(
+                variation.slug ||
+                variationTitle
+            );
 
-        const slug = variationSlug
-            ? `${baseSlug}-${variationSlug}`
-            : baseSlug;
+        if (!childSlug) {
+            const error = new Error(
+                `A valid gift card slug could not be generated for "${variationTitle}"`
+            );
 
-        giftCards.push({
+            error.statusCode = 400;
+            throw error;
+        }
+
+        /*
+         * Prevent duplicate slugs inside this request.
+         */
+        if (generatedSlugs.has(childSlug)) {
+            const regionSlug =
+                createSlug(region);
+
+            const variationSlug =
+                createSlug(varTitle);
+
+            childSlug = [
+                childSlug,
+                regionSlug,
+                variationSlug,
+            ]
+                .filter(Boolean)
+                .join('-');
+        }
+
+        let slugCandidate = childSlug;
+        let suffix = 2;
+
+        while (
+            generatedSlugs.has(slugCandidate)
+        ) {
+            slugCandidate =
+                `${childSlug}-${suffix}`;
+
+            suffix += 1;
+        }
+
+        childSlug = slugCandidate;
+
+        generatedSlugs.add(childSlug);
+
+        childGiftCards.push({
             ...data,
+            ...variation,
 
             type: 'gift-card',
 
-            title,
-            slug,
+            /*
+             * Identity
+             */
+            title: variationTitle,
+            slug: childSlug,
 
+            /*
+             * Variation family
+             */
             giftCardGroupId,
+            isParent: false,
+            parentGiftCardId: null,
             var_title: varTitle,
 
+            /*
+             * Region
+             */
+            region,
+
+            /*
+             * Gift Card
+             */
             item_type: 'GIFT CARD',
 
+            /*
+             * Pricing
+             */
             price,
             discountPrice,
         });
     }
 
     /*
-     * Check all generated slugs
-     * before inserting.
+     * ---------------------------------------------------------
+     * Check all slugs against the database BEFORE inserting.
+     * ---------------------------------------------------------
      */
-    for (const giftCard of giftCards) {
+
+    const allSlugs = [
+        parentSlug,
+        ...childGiftCards.map(
+            (giftCard) => giftCard.slug
+        ),
+    ];
+
+    for (const slug of allSlugs) {
         const existingGiftCard =
-            await repository.findBySlug(
-                giftCard.slug
-            );
+            await repository.findBySlug(slug);
 
         if (existingGiftCard) {
             const error = new Error(
-                `Gift Card slug "${giftCard.slug}" already exists`
+                `Gift Card slug "${slug}" already exists`
             );
 
             error.statusCode = 409;
-
             throw error;
         }
     }
 
-    const createdGiftCards =
-        await repository.createMany(
-            giftCards
-        );
+    /*
+     * ---------------------------------------------------------
+     * Create the parent SKU
+     * ---------------------------------------------------------
+     */
 
+    const parentGiftCard =
+        await repository.create({
+            ...data,
+
+            type: 'gift-card',
+
+            /*
+             * Identity
+             */
+            title,
+            slug: parentSlug,
+
+            /*
+             * Variation family
+             */
+            giftCardGroupId,
+            isParent: true,
+            parentGiftCardId: null,
+            var_title: parentVarTitle,
+
+            /*
+             * Region
+             */
+            region: parentRegion,
+
+            /*
+             * Gift Card
+             */
+            item_type: 'GIFT CARD',
+
+            /*
+             * Pricing
+             */
+            price: parentPrice,
+            discountPrice: parentDiscountPrice,
+        });
+
+    /*
+     * ---------------------------------------------------------
+     * Create all child SKUs
+     * ---------------------------------------------------------
+     */
+
+    let createdChildren = [];
+
+    for (const childGiftCard of childGiftCards) {
+        childGiftCard.parentGiftCardId =
+            parentGiftCard._id;
+    }
+
+    if (childGiftCards.length > 0) {
+        createdChildren =
+            await repository.createMany(
+                childGiftCards
+            );
+    }
+
+    /*
+     * Parent is also a sellable SKU.
+     */
     return {
         giftCardGroupId,
-        giftCards: createdGiftCards,
+
+        parent: parentGiftCard,
+
+        giftCards: [
+            parentGiftCard,
+            ...createdChildren,
+        ],
     };
 }
 

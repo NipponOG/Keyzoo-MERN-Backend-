@@ -305,9 +305,46 @@ async function createProductWithVariations(data = {}) {
         throw error;
     }
 
-    if (!Array.isArray(data.variations) || data.variations.length === 0) {
+    // Parent SKU pricing
+    const price = validatePrice(data.price ?? 0, 'Price');
+
+    const discountPrice = validatePrice(
+        data.discountPrice ?? 0,
+        'Discount price'
+    );
+
+    if (discountPrice > price) {
         const error = new Error(
-            'At least one product variation is required'
+            'Discount price cannot be greater than price'
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    // Parent SKU region
+    const parentRegion = String(data.region || '').trim();
+
+    if (!parentRegion) {
+        const error = new Error('Product region is required');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    // Parent SKU edition
+    const parentVarTitle = String(data.var_title || '').trim();
+
+    if (!parentVarTitle) {
+        const error = new Error(
+            'Product edition is required'
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    // Additional child SKUs
+    if (!Array.isArray(data.regions) || data.regions.length === 0) {
+        const error = new Error(
+            'At least one product region is required'
         );
         error.statusCode = 400;
         throw error;
@@ -315,12 +352,15 @@ async function createProductWithVariations(data = {}) {
 
     const productGroupId = new ObjectId();
 
-    const variationNames = new Set();
-    const products = [];
+    /*
+     * ---------------------------------------------------------
+     * Parent SKU
+     * ---------------------------------------------------------
+     */
 
-    const baseSlug = createSlug(title);
+    const parentSlug = createSlug(data.slug || title);
 
-    if (!baseSlug) {
+    if (!parentSlug) {
         const error = new Error(
             'A valid product slug could not be generated'
         );
@@ -328,165 +368,396 @@ async function createProductWithVariations(data = {}) {
         throw error;
     }
 
-    for (const variation of data.variations) {
-        const varTitle = String(variation.var_title || '').trim();
+    /*
+     * Track SKU combinations so the parent cannot be duplicated
+     * by one of the child SKUs.
+     */
+    const skuCombinations = new Set();
 
-        if (!varTitle) {
+    const parentCombination =
+        `${parentRegion.toLowerCase()}::${parentVarTitle.toLowerCase()}`;
+
+    skuCombinations.add(parentCombination);
+
+    /*
+     * ---------------------------------------------------------
+     * Validate and prepare child SKUs
+     * ---------------------------------------------------------
+     */
+
+    const childProducts = [];
+    const generatedSlugs = new Set([parentSlug]);
+
+    for (const regionData of data.regions) {
+        const region = String(regionData?.region || '').trim();
+
+        if (!region) {
             const error = new Error(
-                'Each variation must have a variation title'
+                'Each product region must have a region name'
             );
             error.statusCode = 400;
             throw error;
         }
 
-        const normalizedVariationName = varTitle.toLowerCase();
-
-        if (variationNames.has(normalizedVariationName)) {
+        if (
+            !Array.isArray(regionData.editions) ||
+            regionData.editions.length === 0
+        ) {
             const error = new Error(
-                `Duplicate variation "${varTitle}"`
+                `Region "${region}" must contain at least one edition`
             );
             error.statusCode = 400;
             throw error;
         }
 
-        variationNames.add(normalizedVariationName);
+        for (const edition of regionData.editions) {
+            const varTitle = String(
+                edition?.var_title || ''
+            ).trim();
 
-        const price = validatePrice(
-            variation.price ?? 0,
-            `Price for ${varTitle}`
-        );
+            const childTitle = String(
+                edition?.title || ''
+            ).trim();
 
-        const discountPrice = validatePrice(
-            variation.discountPrice ?? 0,
-            `Discount price for ${varTitle}`
-        );
+            if (!varTitle) {
+                const error = new Error(
+                    `Each edition in "${region}" must have an edition title`
+                );
+                error.statusCode = 400;
+                throw error;
+            }
 
-        if (discountPrice > price) {
-            const error = new Error(
-                `Discount price cannot be greater than price for ${varTitle}`
+            if (!childTitle) {
+                const error = new Error(
+                    `Each edition in "${region}" must have a product title`
+                );
+                error.statusCode = 400;
+                throw error;
+            }
+
+            const combination =
+                `${region.toLowerCase()}::${varTitle.toLowerCase()}`;
+
+            if (skuCombinations.has(combination)) {
+                const error = new Error(
+                    `Duplicate product SKU: ${region} / ${varTitle}`
+                );
+                error.statusCode = 400;
+                throw error;
+            }
+
+            skuCombinations.add(combination);
+
+            const childPrice = validatePrice(
+                edition.price ?? 0,
+                `Price for ${childTitle}`
             );
-            error.statusCode = 400;
-            throw error;
+
+            const childDiscountPrice = validatePrice(
+                edition.discountPrice ?? 0,
+                `Discount price for ${childTitle}`
+            );
+
+            if (childDiscountPrice > childPrice) {
+                const error = new Error(
+                    `Discount price cannot be greater than price for ${childTitle}`
+                );
+                error.statusCode = 400;
+                throw error;
+            }
+
+            /*
+             * Child slug is based on its own title.
+             */
+
+            let childSlug = createSlug(edition?.slug || childTitle);
+
+            if (!childSlug) {
+                const error = new Error(
+                    `A valid product slug could not be generated for "${childTitle}"`
+                );
+                error.statusCode = 400;
+                throw error;
+            }
+
+            /*
+             * Slugs must be unique inside this creation request.
+             *
+             * If two child titles generate the same slug,
+             * append the region and edition.
+             */
+            if (generatedSlugs.has(childSlug)) {
+                const regionSlug = createSlug(region);
+                const editionSlug = createSlug(varTitle);
+
+                childSlug = [
+                    childSlug,
+                    regionSlug,
+                    editionSlug,
+                ]
+                    .filter(Boolean)
+                    .join('-');
+            }
+
+            /*
+             * If it still conflicts, keep adding a numeric suffix.
+             */
+            let slugCandidate = childSlug;
+            let suffix = 2;
+
+            while (generatedSlugs.has(slugCandidate)) {
+                slugCandidate = `${childSlug}-${suffix}`;
+                suffix += 1;
+            }
+
+            childSlug = slugCandidate;
+
+            generatedSlugs.add(childSlug);
+
+            childProducts.push({
+                type: 'product',
+
+                // Identity
+                title: childTitle,
+                slug: childSlug,
+
+                // Variation family
+                productGroupId,
+                isParent: false,
+                parentProductId: null,
+                var_title: varTitle,
+
+                // Pricing
+                price: childPrice,
+                discountPrice: childDiscountPrice,
+                currency: data.currency ?? 'INR',
+
+                // Classification
+                platform: data.platform ?? null,
+                category: data.category ?? null,
+                subCategory: data.subCategory ?? null,
+                workPlatform: data.workPlatform ?? null,
+
+                item: data.item ?? 'DIGITAL KEY',
+                item_type: data.item_type ?? 'GAME',
+
+                // Region
+                region,
+
+                // Content
+                notice: data.notice ?? null,
+                description: data.description ?? null,
+                descriptionkey: data.descriptionkey ?? null,
+
+                publisher: data.publisher ?? null,
+                developer: data.developer ?? null,
+                releaseDate: data.releaseDate ?? null,
+                editiondescription: data.editiondescription ?? null,
+                age: data.age ?? null,
+
+                // Requirements
+                minimumRequirement:
+                    data.minimumRequirement ?? null,
+
+                recommendedRequirement:
+                    data.recommendedRequirement ?? null,
+
+                // Languages
+                audio_language:
+                    data.audio_language ?? [],
+
+                interface_language:
+                    data.interface_language ?? [],
+
+                subtitles_language:
+                    data.subtitles_language ?? [],
+
+                // Media
+                image: data.image ?? null,
+                gallery: data.gallery ?? [],
+                platform_image:
+                    data.platform_image ?? null,
+
+                platform_icon_image:
+                    data.platform_icon_image ?? null,
+
+                // State
+                status: data.status ?? 'draft',
+                available: data.available ?? false,
+
+                // Flags
+                isBestSeller:
+                    data.isBestSeller ?? false,
+
+                isRecommended:
+                    data.isRecommended ?? false,
+
+                psn: data.psn ?? false,
+
+                // Rating
+                rating: data.rating ?? 0,
+
+                // Relationships
+                relatedProducts:
+                    data.relatedProducts ?? [],
+
+                // SEO
+                seo: data.seo ?? null,
+                Tags: data.Tags ?? [],
+            });
         }
-
-        const variationSlug = createSlug(varTitle);
-
-        const slug = variationSlug
-            ? `${baseSlug}-${variationSlug}`
-            : baseSlug;
-
-        // products.push({
-        //     ...data,
-
-        //     title,
-        //     slug,
-
-        //     productGroupId,
-        //     var_title: varTitle,
-
-        //     price,
-        //     discountPrice,
-
-        //     // Variations are controlled by the variation object.
-        //     // variations: undefined,
-        // });
-
-        products.push({
-            // Identity
-            type: "product",
-            title,
-            slug,
-
-            // Variation
-            productGroupId,
-            var_title: varTitle,
-
-            // Pricing
-            price,
-            discountPrice,
-            currency: data.currency ?? "INR",
-
-            // Classification
-            platform: data.platform ?? null,
-            category: data.category ?? null,
-            subCategory: data.subCategory ?? null,
-            workPlatform: data.workPlatform ?? null,
-
-            item: data.item ?? "DIGITAL KEY",
-            item_type: data.item_type ?? "GAME",
-
-            // Region
-            region: data.region ?? null,
-            // card_region: data.card_region ?? null,
-
-            // Content
-            notice: data.notice ?? null,
-            description: data.description ?? null,
-            descriptionkey: data.descriptionkey ?? null,
-
-            publisher: data.publisher ?? null,
-            developer: data.developer ?? null,
-            releaseDate: data.releaseDate ?? null,
-            editiondescription: data.editiondescription ?? null,
-            age: data.age ?? null,
-
-            // Requirements
-            minimumRequirement: data.minimumRequirement ?? null,
-            recommendedRequirement: data.recommendedRequirement ?? null,
-
-            // Languages
-            audio_language: data.audio_language ?? [],
-            interface_language: data.interface_language ?? [],
-            subtitles_language: data.subtitles_language ?? [],
-
-            // Media
-            image: data.image ?? null,
-            gallery: data.gallery ?? [],
-            platform_image: data.platform_image ?? null,
-            platform_icon_image: data.platform_icon_image ?? null,
-
-            // State
-            status: data.status ?? "draft",
-            available: data.available ?? false,
-
-            // Flags
-            isBestSeller: data.isBestSeller ?? false,
-            isRecommended: data.isRecommended ?? false,
-            psn: data.psn ?? false,
-
-            // Rating
-            rating: data.rating ?? 0,
-
-            // Relationships
-            relatedProducts: data.relatedProducts ?? [],
-
-            // SEO
-            seo: data.seo ?? null,
-            Tags: data.Tags ?? [],
-        });
-
     }
 
     /*
-     * Check all generated slugs before inserting.
+     * ---------------------------------------------------------
+     * Check all slugs against the database BEFORE inserting.
+     * ---------------------------------------------------------
      */
-    for (const product of products) {
-        const existingProduct = await repository.findBySlug(product.slug);
+
+    const allSlugs = [
+        parentSlug,
+        ...childProducts.map((product) => product.slug),
+    ];
+
+    for (const slug of allSlugs) {
+        const existingProduct =
+            await repository.findBySlug(slug);
 
         if (existingProduct) {
             const error = new Error(
-                `Product slug "${product.slug}" already exists`
+                `Product slug "${slug}" already exists`
             );
             error.statusCode = 409;
             throw error;
         }
     }
 
-    const createdProducts = await repository.createMany(products);
+    /*
+     * ---------------------------------------------------------
+     * Create the parent SKU
+     * ---------------------------------------------------------
+     */
 
+    const parentProduct = await repository.create({
+        type: 'product',
+
+        // Identity
+        title,
+        slug: parentSlug,
+
+        // Variation family
+        productGroupId,
+        isParent: true,
+        parentProductId: null,
+        var_title: parentVarTitle,
+
+        // Pricing
+        price,
+        discountPrice,
+        currency: data.currency ?? 'INR',
+
+        // Classification
+        platform: data.platform ?? null,
+        category: data.category ?? null,
+        subCategory: data.subCategory ?? null,
+        workPlatform: data.workPlatform ?? null,
+
+        item: data.item ?? 'DIGITAL KEY',
+        item_type: data.item_type ?? 'GAME',
+
+        // Region
+        region: parentRegion,
+
+        // Content
+        notice: data.notice ?? null,
+        description: data.description ?? null,
+        descriptionkey: data.descriptionkey ?? null,
+
+        publisher: data.publisher ?? null,
+        developer: data.developer ?? null,
+        releaseDate: data.releaseDate ?? null,
+        editiondescription: data.editiondescription ?? null,
+        age: data.age ?? null,
+
+        // Requirements
+        minimumRequirement:
+            data.minimumRequirement ?? null,
+
+        recommendedRequirement:
+            data.recommendedRequirement ?? null,
+
+        // Languages
+        audio_language:
+            data.audio_language ?? [],
+
+        interface_language:
+            data.interface_language ?? [],
+
+        subtitles_language:
+            data.subtitles_language ?? [],
+
+        // Media
+        image: data.image ?? null,
+        gallery: data.gallery ?? [],
+        platform_image:
+            data.platform_image ?? null,
+
+        platform_icon_image:
+            data.platform_icon_image ?? null,
+
+        // State
+        status: data.status ?? 'draft',
+        available: data.available ?? false,
+
+        // Flags
+        isBestSeller:
+            data.isBestSeller ?? false,
+
+        isRecommended:
+            data.isRecommended ?? false,
+
+        psn: data.psn ?? false,
+
+        // Rating
+        rating: data.rating ?? 0,
+
+        // Relationships
+        relatedProducts:
+            data.relatedProducts ?? [],
+
+        // SEO
+        seo: data.seo ?? null,
+        Tags: data.Tags ?? [],
+    });
+
+    /*
+     * ---------------------------------------------------------
+     * Create all child SKUs
+     * ---------------------------------------------------------
+     */
+
+    let createdChildren = [];
+
+    for (const childProduct of childProducts) {
+        childProduct.parentProductId = parentProduct._id;
+    }
+
+    if (childProducts.length > 0) {
+        createdChildren =
+            await repository.createMany(childProducts);
+    }
+
+    /*
+     * Parent is also a sellable SKU, so return it together
+     * with all child SKUs.
+     */
     return {
         productGroupId,
-        products: createdProducts,
+        parent: parentProduct,
+        products: [
+            parentProduct,
+            ...createdChildren,
+        ],
     };
 }
 

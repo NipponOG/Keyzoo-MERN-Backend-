@@ -10,12 +10,19 @@ function createProductDocument(data = {}) {
     return {
         type: 'product',
 
-        // Identity
+        // Product family
+        productGroupId: data.productGroupId ?? null,
+
+        // Parent / child relationship
+        isParent: data.isParent ?? false,
+        parentProductId: data.parentProductId ?? null,
+
+        // Product identity
         title: data.title ?? '',
         slug: data.slug ?? '',
 
-        // Product group / variation
-        productGroupId: data.productGroupId ?? null,
+        // Region / edition
+        region: data.region ?? null,
         var_title: data.var_title ?? null,
 
         // Pricing
@@ -23,31 +30,25 @@ function createProductDocument(data = {}) {
         discountPrice: data.discountPrice ?? 0,
         currency: data.currency ?? 'INR',
 
-        // Product classification
+        // Classification
         platform: data.platform ?? null,
         category: data.category ?? null,
         subCategory: data.subCategory ?? null,
         workPlatform: data.workPlatform ?? null,
-
         item: data.item ?? 'DIGITAL KEY',
         item_type: data.item_type ?? 'GAME',
 
-        // Region
-        region: data.region ?? null,
-        // card_region: data.card_region ?? null,   No longer needed,
-
-        // Content
+        // Product information
         notice: data.notice ?? null,
         description: data.description ?? null,
         descriptionkey: data.descriptionkey ?? null,
-
         publisher: data.publisher ?? null,
         developer: data.developer ?? null,
         releaseDate: data.releaseDate ?? null,
         editiondescription: data.editiondescription ?? null,
         age: data.age ?? null,
 
-        // System requirements
+        // Requirements
         minimumRequirement: data.minimumRequirement ?? {
             os: null,
             processor: null,
@@ -58,44 +59,39 @@ function createProductDocument(data = {}) {
             additional_notes: null,
         },
 
-        recommendedRequirement: data.recommendedRequirement ?? {
-            os: null,
-            processor: null,
-            memory: null,
-            graphics: null,
-            storage: null,
-            sound: null,
-            additional_notes: null,
-        },
+        recommendedRequirement:
+            data.recommendedRequirement ?? {
+                os: null,
+                processor: null,
+                memory: null,
+                graphics: null,
+                storage: null,
+                sound: null,
+                additional_notes: null,
+            },
 
         // Languages
         audio_language: data.audio_language ?? [],
         interface_language: data.interface_language ?? [],
         subtitles_language: data.subtitles_language ?? [],
 
-        // Media
+        // Images
         image: data.image ?? null,
         gallery: data.gallery ?? [],
-
         platform_image: data.platform_image ?? null,
-        platform_icon_image: data.platform_icon_image ?? null,
+        platform_icon_image:
+            data.platform_icon_image ?? null,
 
-        // Product state
+        // Store settings
         status: data.status ?? 'draft',
         available: data.available ?? false,
-
-        // Product flags
         isBestSeller: data.isBestSeller ?? false,
         isRecommended: data.isRecommended ?? false,
         psn: data.psn ?? false,
-
-        // Rating
         rating: data.rating ?? 0,
 
-        // Relationships
+        // Relations / SEO
         relatedProducts: data.relatedProducts ?? [],
-
-        // SEO
         seo: data.seo ?? null,
         Tags: data.Tags ?? [],
 

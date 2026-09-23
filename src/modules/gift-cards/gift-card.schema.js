@@ -16,6 +16,8 @@ function createGiftCardDocument(data = {}) {
 
         // Gift card group / variation
         giftCardGroupId: data.giftCardGroupId ?? null,
+        isParent: data.isParent ?? false,
+        parentGiftCardId: data.parentGiftCardId ?? null,
         var_title: data.var_title ?? null,
 
         // Pricing
@@ -71,7 +73,7 @@ function createGiftCardDocument(data = {}) {
         isBestSeller: data.isBestSeller ?? false,
         isRecommended: data.isRecommended ?? false,
         psn: data.psn ?? false,
-        
+
         // Rating
         rating: data.rating ?? 0,
 
