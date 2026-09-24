@@ -14,6 +14,12 @@ router.post(
 );
 
 router.post(
+    '/:id/variations',
+    requireAdmin,
+    controller.addProductVariation
+);
+
+router.post(
     '/',
     requireAdmin,
     controller.createProduct

@@ -101,6 +101,25 @@ async function createProductWithVariations(req, res, next) {
     }
 }
 
+async function addProductVariation(req, res, next) {
+    try {
+        const { id } = req.params;
+
+        const product = await productService.addProductVariation(
+            id,
+            req.body
+        );
+
+        return res.status(201).json({
+            success: true,
+            message: 'Product variation added successfully',
+            data: product,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 async function updateProduct(req, res, next) {
     try {
         const { id } = req.params;
@@ -181,6 +200,7 @@ module.exports = {
     getPublishedProductVariations,
     createProduct,
     createProductWithVariations,
+    addProductVariation,
     updateProduct,
     deleteProduct,
     getPublishedRecommendedProducts,

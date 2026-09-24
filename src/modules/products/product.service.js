@@ -761,6 +761,253 @@ async function createProductWithVariations(data = {}) {
     };
 }
 
+async function addProductVariation(parentProductId, data = {}) {
+    if (!parentProductId || !ObjectId.isValid(parentProductId)) {
+        const error = new Error('Valid parent product ID is required');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const parentProduct = await repository.findById(parentProductId);
+
+    if (!parentProduct) {
+        const error = new Error('Parent product not found');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    // If an existing child ID is supplied, resolve the real parent.
+    let parent = parentProduct;
+
+    if (
+        parentProduct.isParent === false &&
+        parentProduct.parentProductId
+    ) {
+        parent = await repository.findById(
+            parentProduct.parentProductId.toString()
+        );
+
+        if (!parent) {
+            const error = new Error(
+                'The parent product for this variation could not be found'
+            );
+            error.statusCode = 404;
+            throw error;
+        }
+    }
+
+    if (parent.isParent !== true) {
+        const error = new Error(
+            'The selected product is not a valid variation parent'
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    if (!parent.productGroupId) {
+        const error = new Error(
+            'The parent product does not have a product group'
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    // ---------------------------------------------------------
+    // Validate child fields
+    // ---------------------------------------------------------
+
+    const title = String(data.title || '').trim();
+
+    if (!title) {
+        const error = new Error('Product title is required');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const region = String(data.region || '').trim();
+
+    if (!region) {
+        const error = new Error('Product region is required');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const varTitle = String(data.var_title || '').trim();
+
+    if (!varTitle) {
+        const error = new Error('Product edition is required');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const price = validatePrice(
+        data.price ?? 0,
+        'Price'
+    );
+
+    const discountPrice = validatePrice(
+        data.discountPrice ?? 0,
+        'Discount price'
+    );
+
+    if (discountPrice > price) {
+        const error = new Error(
+            'Discount price cannot be greater than price'
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    // ---------------------------------------------------------
+    // Prevent duplicate Region + Edition inside this group
+    // ---------------------------------------------------------
+
+    const existingVariations =
+        await repository.findByGroupId(
+            parent.productGroupId.toString()
+        );
+
+    const combination =
+        `${region.toLowerCase()}::${varTitle.toLowerCase()}`;
+
+    const duplicateVariation = existingVariations.find(
+        (product) =>
+            `${String(product.region || '').trim().toLowerCase()}::${String(
+                product.var_title || ''
+            ).trim().toLowerCase()}` === combination
+    );
+
+    if (duplicateVariation) {
+        const error = new Error(
+            `Product SKU "${region} / ${varTitle}" already exists in this product group`
+        );
+        error.statusCode = 409;
+        throw error;
+    }
+
+    // ---------------------------------------------------------
+    // Create child slug
+    // ---------------------------------------------------------
+
+    let slug = createSlug(data.slug || title);
+
+    if (!slug) {
+        const error = new Error(
+            `A valid product slug could not be generated for "${title}"`
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    // Make sure slug is globally unique.
+    const originalSlug = slug;
+    let suffix = 2;
+
+    while (await repository.findBySlug(slug)) {
+        slug = `${originalSlug}-${suffix}`;
+        suffix += 1;
+    }
+
+    // ---------------------------------------------------------
+    // Create child SKU
+    // ---------------------------------------------------------
+
+    const childProduct = await repository.create({
+        type: 'product',
+
+        // Identity
+        title,
+        slug,
+
+        // Variation family
+        productGroupId: parent.productGroupId,
+        isParent: false,
+        parentProductId: parent._id,
+        var_title: varTitle,
+
+        // Pricing
+        price,
+        discountPrice,
+        currency: data.currency ?? parent.currency ?? 'INR',
+
+        // Classification
+        platform: data.platform ?? parent.platform ?? null,
+        category: data.category ?? parent.category ?? null,
+        subCategory: data.subCategory ?? parent.subCategory ?? null,
+        workPlatform: data.workPlatform ?? parent.workPlatform ?? null,
+
+        item: data.item ?? parent.item ?? 'DIGITAL KEY',
+        item_type: data.item_type ?? parent.item_type ?? 'GAME',
+
+        // Region
+        region,
+
+        // Content
+        notice: data.notice ?? null,
+        description: data.description ?? null,
+        descriptionkey: data.descriptionkey ?? null,
+
+        publisher: data.publisher ?? null,
+        developer: data.developer ?? null,
+        releaseDate: data.releaseDate ?? null,
+        editiondescription: data.editiondescription ?? null,
+        age: data.age ?? null,
+
+        // Requirements
+        minimumRequirement:
+            data.minimumRequirement ?? null,
+
+        recommendedRequirement:
+            data.recommendedRequirement ?? null,
+
+        // Languages
+        audio_language:
+            data.audio_language ?? [],
+
+        interface_language:
+            data.interface_language ?? [],
+
+        subtitles_language:
+            data.subtitles_language ?? [],
+
+        // Media
+        image: data.image ?? null,
+        gallery: data.gallery ?? [],
+        platform_image:
+            data.platform_image ?? null,
+
+        platform_icon_image:
+            data.platform_icon_image ?? null,
+
+        // State
+        status: data.status ?? parent.status ?? 'draft',
+        available: data.available ?? false,
+
+        // Flags
+        isBestSeller:
+            data.isBestSeller ?? parent.isBestSeller ?? false,
+
+        isRecommended:
+            data.isRecommended ?? parent.isRecommended ?? false,
+
+        psn:
+            data.psn ?? parent.psn ?? false,
+
+        // Rating
+        rating: data.rating ?? 0,
+
+        // Relationships
+        relatedProducts:
+            data.relatedProducts ?? [],
+
+        // SEO
+        seo: data.seo ?? null,
+        Tags: data.Tags ?? [],
+    });
+
+    return childProduct;
+}
+
 async function updateProduct(id, data = {}) {
     const existingProduct = await repository.findById(id);
 
@@ -1024,6 +1271,7 @@ module.exports = {
     getPublishedProductVariations,
     createProduct,
     createProductWithVariations,
+    addProductVariation,
     updateProduct,
     deleteProduct,
     getPublishedRecommendedProducts,

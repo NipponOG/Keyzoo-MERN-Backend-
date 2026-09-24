@@ -26,6 +26,12 @@ router.get(
     controller.getGiftCardVariations
 );
 
+router.post(
+    '/:id/variations',
+    requireAdmin,
+    controller.addGiftCardVariation
+);
+
 router.get(
     '/:id',
     requireAdmin,

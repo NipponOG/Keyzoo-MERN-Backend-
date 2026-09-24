@@ -604,6 +604,238 @@ async function createGiftCardWithVariations(data = {}) {
     };
 }
 
+async function addGiftCardVariation(id, data = {}) {
+    const existingGiftCard =
+        await repository.findById(id);
+
+    if (!existingGiftCard) {
+        const error = new Error(
+            'Gift card not found.'
+        );
+
+        error.statusCode = 404;
+        throw error;
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * Resolve the parent SKU
+     * ---------------------------------------------------------
+     */
+
+    let parentGiftCard = existingGiftCard;
+
+    if (
+        existingGiftCard.isParent !== true &&
+        existingGiftCard.parentGiftCardId
+    ) {
+        parentGiftCard =
+            await repository.findById(
+                existingGiftCard.parentGiftCardId.toString()
+            );
+
+        if (!parentGiftCard) {
+            const error = new Error(
+                'Parent gift card SKU not found.'
+            );
+
+            error.statusCode = 404;
+            throw error;
+        }
+    }
+
+    const giftCardGroupId =
+        parentGiftCard.giftCardGroupId;
+
+    if (!giftCardGroupId) {
+        const error = new Error(
+            'This gift card is not part of a variation group.'
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * Validate variation fields
+     * ---------------------------------------------------------
+     */
+
+    const title =
+        String(data.title || '').trim();
+
+    if (!title) {
+        const error = new Error(
+            'Gift card variation title is required.'
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const varTitle =
+        String(data.var_title || '').trim();
+
+    if (!varTitle) {
+        const error = new Error(
+            'Gift card variation / edition title is required.'
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const region =
+        String(data.region || '').trim();
+
+    if (!region) {
+        const error = new Error(
+            'Gift card variation region is required.'
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const price = validatePrice(
+        data.price,
+        'Price'
+    );
+
+    const discountPrice = validatePrice(
+        data.discountPrice,
+        'Discount price'
+    );
+
+    if (discountPrice > price) {
+        const error = new Error(
+            'Discount price cannot be greater than price.'
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * Slug
+     * ---------------------------------------------------------
+     *
+     * Use manually entered slug when supplied.
+     * Otherwise generate from variation title.
+     */
+
+    const slug = createSlug(
+        data.slug || title
+    );
+
+    if (!slug) {
+        const error = new Error(
+            'A valid gift card variation slug could not be generated.'
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const existingSlug =
+        await repository.findBySlug(slug);
+
+    if (existingSlug) {
+        const error = new Error(
+            `Gift Card slug "${slug}" already exists`
+        );
+
+        error.statusCode = 409;
+        throw error;
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * Prevent duplicate Region + Variation combinations
+     * ---------------------------------------------------------
+     */
+
+    const existingVariations =
+        await repository.findByGroupId(
+            giftCardGroupId.toString()
+        );
+
+    const normalizedCombination =
+        `${region.toLowerCase()}::${varTitle.toLowerCase()}`;
+
+    const duplicateVariation =
+        existingVariations.some(
+            (giftCard) =>
+                String(giftCard.region || '')
+                    .trim()
+                    .toLowerCase() === region.toLowerCase() &&
+                String(giftCard.var_title || '')
+                    .trim()
+                    .toLowerCase() === varTitle.toLowerCase()
+        );
+
+    if (duplicateVariation) {
+        const error = new Error(
+            `Gift card variation "${region} / ${varTitle}" already exists`
+        );
+
+        error.statusCode = 409;
+        throw error;
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * Create child SKU
+     * ---------------------------------------------------------
+     */
+
+    const variation =
+        await repository.create({
+            ...parentGiftCard,
+
+            /*
+             * Identity
+             */
+            title,
+            slug,
+
+            /*
+             * Variation family
+             */
+            giftCardGroupId,
+            isParent: false,
+            parentGiftCardId: parentGiftCard._id,
+            var_title: varTitle,
+
+            /*
+             * Region
+             */
+            region,
+
+            /*
+             * Gift Card
+             */
+            item_type: 'GIFT CARD',
+
+            /*
+             * Pricing
+             */
+            price,
+            discountPrice,
+
+            /*
+             * These are generated by the schema/repository.
+             */
+            _id: undefined,
+            createdAt: undefined,
+            updatedAt: undefined,
+        });
+
+    return variation;
+}
+
 async function updateGiftCard(id, data = {}) {
     const existingGiftCard = await repository.findById(id);
 
@@ -911,6 +1143,7 @@ module.exports = {
     getPublishedBestSellingGiftCards,
     createGiftCard,
     createGiftCardWithVariations,
+    addGiftCardVariation,
     addEffectiveAvailability,
     updateGiftCard,
     deleteGiftCard,

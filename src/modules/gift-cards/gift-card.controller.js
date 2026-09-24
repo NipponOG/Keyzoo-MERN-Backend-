@@ -124,6 +124,31 @@ async function createGiftCardWithVariations(
     }
 }
 
+async function addGiftCardVariation(
+    req,
+    res,
+    next
+) {
+    try {
+        const { id } = req.params;
+
+        const giftCard =
+            await giftCardService.addGiftCardVariation(
+                id,
+                req.body
+            );
+
+        return res.status(201).json({
+            success: true,
+            message:
+                'Gift Card variation added successfully',
+            data: giftCard,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 async function getPublishedRecommendedGiftCards(req, res, next) {
     try {
         const limit = Math.min(
@@ -207,6 +232,7 @@ module.exports = {
     getPublishedBestSellingGiftCards,
     createGiftCard,
     createGiftCardWithVariations,
+    addGiftCardVariation,
     updateGiftCard,
     deleteGiftCard,
     getPublishedGiftCardVariations,
