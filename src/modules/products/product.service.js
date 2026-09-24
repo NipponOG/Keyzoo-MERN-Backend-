@@ -1197,6 +1197,54 @@ async function updateProduct(id, data = {}) {
     return repository.updateById(id, updateData);
 }
 
+// async function deleteProduct(id) {
+//     if (!id || !ObjectId.isValid(id)) {
+//         const error = new Error('Valid product ID is required');
+//         error.statusCode = 400;
+//         throw error;
+//     }
+
+//     const existingProduct = await repository.findById(id);
+
+//     if (!existingProduct) {
+//         const error = new Error('Product not found.');
+//         error.statusCode = 404;
+//         throw error;
+//     }
+
+//     // Find keys belonging only to this exact product variation.
+//     const gameKeys = await gameKeyRepository.findByProductId(id);
+
+//     // Never delete a product that already has assigned/sold keys.
+//     const assignedKeys = gameKeys.filter(
+//         (key) => key.isAvailable === false
+//     );
+
+//     if (assignedKeys.length > 0) {
+//         const error = new Error(
+//             'This product cannot be deleted because it has assigned or sold game keys.'
+//         );
+
+//         error.statusCode = 409;
+//         throw error;
+//     }
+
+//     // Delete only available keys belonging to this exact product.
+//     for (const gameKey of gameKeys) {
+//         await gameKeyRepository.deleteById(
+//             gameKey._id.toString()
+//         );
+//     }
+
+//     // Delete only this product variation.
+//     const deletedProduct = await repository.deleteById(id);
+
+//     return {
+//         product: deletedProduct,
+//         deletedGameKeys: gameKeys.length,
+//     };
+// }
+
 async function deleteProduct(id) {
     if (!id || !ObjectId.isValid(id)) {
         const error = new Error('Valid product ID is required');
@@ -1212,10 +1260,41 @@ async function deleteProduct(id) {
         throw error;
     }
 
+    // ---------------------------------------------------------
+    // Parent SKU protection
+    // ---------------------------------------------------------
+    if (
+        existingProduct.isParent === true &&
+        existingProduct.productGroupId
+    ) {
+        const variations = await repository.findByGroupId(
+            existingProduct.productGroupId.toString()
+        );
+
+        const childVariations = variations.filter(
+            (product) =>
+                product._id.toString() !==
+                existingProduct._id.toString()
+        );
+
+        if (childVariations.length > 0) {
+            const error = new Error(
+                'This parent product cannot be deleted while it has variations. Delete the variations first.'
+            );
+
+            error.statusCode = 409;
+            throw error;
+        }
+    }
+
+    // ---------------------------------------------------------
+    // Game key protection
+    // ---------------------------------------------------------
+
     // Find keys belonging only to this exact product variation.
     const gameKeys = await gameKeyRepository.findByProductId(id);
 
-    // Never delete a product that already has assigned/sold keys.
+    // Never delete a product that has assigned or sold keys.
     const assignedKeys = gameKeys.filter(
         (key) => key.isAvailable === false
     );
@@ -1236,7 +1315,7 @@ async function deleteProduct(id) {
         );
     }
 
-    // Delete only this product variation.
+    // Delete only this exact product variation.
     const deletedProduct = await repository.deleteById(id);
 
     return {

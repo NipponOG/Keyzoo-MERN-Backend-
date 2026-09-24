@@ -1032,6 +1032,66 @@ async function updateGiftCard(id, data = {}) {
     return repository.updateById(id, updateData);
 }
 
+// async function deleteGiftCard(id) {
+//     if (!id || !ObjectId.isValid(id)) {
+//         const error = new Error(
+//             'Valid Gift Card ID is required'
+//         );
+
+//         error.statusCode = 400;
+//         throw error;
+//     }
+
+//     const existingGiftCard =
+//         await repository.findById(id);
+
+//     if (!existingGiftCard) {
+//         const error = new Error(
+//             'Gift card not found.'
+//         );
+
+//         error.statusCode = 404;
+//         throw error;
+//     }
+
+//     // Find keys belonging only to this exact
+//     // gift card variation.
+//     const gameKeys =
+//         await gameKeyRepository.findByGiftCardId(id);
+
+//     // Never delete a gift card that has
+//     // assigned or sold keys.
+//     const assignedKeys = gameKeys.filter(
+//         (key) => key.isAvailable === false
+//     );
+
+//     if (assignedKeys.length > 0) {
+//         const error = new Error(
+//             'This gift card cannot be deleted because it has assigned or sold game keys.'
+//         );
+
+//         error.statusCode = 409;
+//         throw error;
+//     }
+
+//     // Delete only available keys belonging
+//     // to this exact gift card variation.
+//     for (const gameKey of gameKeys) {
+//         await gameKeyRepository.deleteById(
+//             gameKey._id.toString()
+//         );
+//     }
+
+//     // Delete only this exact gift card variation.
+//     const deletedGiftCard =
+//         await repository.deleteById(id);
+
+//     return {
+//         giftCard: deletedGiftCard,
+//         deletedGameKeys: gameKeys.length,
+//     };
+// }
+
 async function deleteGiftCard(id) {
     if (!id || !ObjectId.isValid(id)) {
         const error = new Error(
@@ -1052,6 +1112,32 @@ async function deleteGiftCard(id) {
 
         error.statusCode = 404;
         throw error;
+    }
+
+    // Parent Gift Card protection
+    if (
+        existingGiftCard.isParent === true &&
+        existingGiftCard.giftCardGroupId
+    ) {
+        const variations =
+            await repository.findByGroupId(
+                existingGiftCard.giftCardGroupId.toString()
+            );
+
+        const childVariations = variations.filter(
+            (giftCard) =>
+                giftCard._id.toString() !==
+                existingGiftCard._id.toString()
+        );
+
+        if (childVariations.length > 0) {
+            const error = new Error(
+                'This parent gift card cannot be deleted while it has variations. Delete the variations first.'
+            );
+
+            error.statusCode = 409;
+            throw error;
+        }
     }
 
     // Find keys belonging only to this exact

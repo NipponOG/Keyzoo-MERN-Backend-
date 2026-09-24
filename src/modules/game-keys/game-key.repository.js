@@ -39,6 +39,25 @@ async function findByCode(code) {
     });
 }
 
+// Find multiple existing game keys by their codes
+async function findByCodes(codes) {
+    if (!Array.isArray(codes) || codes.length === 0) {
+        return [];
+    }
+
+    return getCollection()
+        .find({
+            code: {
+                $in: codes,
+            },
+        })
+        .project({
+            _id: 1,
+            code: 1,
+        })
+        .toArray();
+}
+
 // Assign an available key to a product
 async function assignAvailableProductKey(productId) {
     const objectId = toObjectId(productId);
@@ -252,6 +271,7 @@ async function bulkDeleteByIds(ids) {
 module.exports = {
     findById,
     findByCode,
+    findByCodes,
 
     assignAvailableProductKey,
     assignAvailableGiftCardKey,

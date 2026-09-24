@@ -3,6 +3,9 @@
 const { ObjectId } = require('mongodb');
 const repository = require('./game-key.repository');
 
+const productRepository = require('../products/product.repository');
+const giftCardRepository = require('../gift-cards/gift-card.repository');
+
 const VALID_OWNER_TYPES = [
     'product',
     'gift-card',
@@ -162,6 +165,28 @@ async function updateGameKey(id, code) {
 async function deleteGameKey(id) {
     validateMongoId(id, 'game key ID');
 
+    const existingKey =
+        await repository.findById(id);
+
+    if (!existingKey) {
+        const error = new Error(
+            'Game key not found.'
+        );
+
+        error.statusCode = 404;
+        throw error;
+    }
+
+    // Do not allow assigned or sold keys to be deleted
+    if (!existingKey.isAvailable) {
+        const error = new Error(
+            'Sold or assigned game keys cannot be deleted.'
+        );
+
+        error.statusCode = 409;
+        throw error;
+    }
+
     return repository.deleteById(id);
 }
 
@@ -197,6 +222,35 @@ async function uploadGameKeys({
         validateMongoId(giftCardId, 'gift card ID');
     }
 
+    // Verify that the owner actually exists
+    if (productId) {
+        const product =
+            await productRepository.findById(productId);
+
+        if (!product) {
+            const error = new Error(
+                'Product not found.'
+            );
+
+            error.statusCode = 404;
+            throw error;
+        }
+    }
+
+    if (giftCardId) {
+        const giftCard =
+            await giftCardRepository.findById(giftCardId);
+
+        if (!giftCard) {
+            const error = new Error(
+                'Gift card not found.'
+            );
+
+            error.statusCode = 404;
+            throw error;
+        }
+    }
+
     if (!Array.isArray(keys) || keys.length === 0) {
         const error = new Error(
             'At least one game key is required.'
@@ -223,21 +277,15 @@ async function uploadGameKeys({
         throw error;
     }
 
-    // Check existing codes
-    const existingKeys = [];
-
-    for (const code of cleanedKeys) {
-        const existing =
-            await repository.findByCode(code);
-
-        if (existing) {
-            existingKeys.push(code);
-        }
-    }
+    // Check existing codes in one database query
+    const existingKeys = await repository.findByCodes(cleanedKeys);
 
     if (existingKeys.length > 0) {
+
+        const existingCodes = existingKeys.map((key) => key.code);
+
         const error = new Error(
-            `These game keys already exist: ${existingKeys.join(', ')}`
+            `These game keys already exist: ${existingCodes.join(', ')}`
         );
 
         error.statusCode = 409;
