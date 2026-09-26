@@ -15,6 +15,13 @@ const router = express.Router();
  * Must come before /:id so "my/:orderNumber"
  * is handled by this route.
  */
+
+router.get(
+    '/my',
+    requireAuth,
+    controller.getMyOrders
+);
+
 router.get(
     '/my/:orderNumber',
     requireAuth,

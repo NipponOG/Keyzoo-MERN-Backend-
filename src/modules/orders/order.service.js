@@ -590,6 +590,108 @@ async function getUserOrderByOrderNumber(
     };
 }
 
+async function getUserOrders({
+    userId,
+    page = 1,
+    pageSize = 10,
+} = {}) {
+    if (!userId) {
+        const error = new Error(
+            'Authenticated user is required.'
+        );
+
+        error.statusCode = 401;
+        throw error;
+    }
+
+    const result =
+        await orderRepository.findUserOrders({
+            userId,
+            page,
+            pageSize,
+        });
+
+    return {
+        data: result.orders.map(
+            (order) => ({
+                orderNumber:
+                    order.orderNumber,
+
+                totalAmount:
+                    order.totalAmount,
+
+                currency:
+                    order.currency,
+
+                paymentStatus:
+                    order.paymentStatus,
+
+                deliveryStatus:
+                    order.deliveryStatus,
+
+                createdAt:
+                    order.createdAt,
+
+                items:
+                    (order.cartSnapshot || []).map(
+                        (item) => ({
+                            id:
+                                item.id
+                                    ?.toString?.() ??
+                                item.id,
+
+                            type:
+                                item.type,
+
+                            title:
+                                item.title,
+
+                            slug:
+                                item.slug,
+
+                            quantity:
+                                item.quantity,
+
+                            unitPrice:
+                                item.unitPrice,
+
+                            subtotal:
+                                item.subtotal,
+
+                            currency:
+                                item.currency,
+
+                            region:
+                                item.region,
+
+                            var_title:
+                                item.var_title,
+
+                            image:
+                                item.image,
+                        })
+                    ),
+            })
+        ),
+
+        meta: {
+            pagination: {
+                page:
+                    result.page,
+
+                pageSize:
+                    result.pageSize,
+
+                pageCount:
+                    result.totalPages,
+
+                total:
+                    result.total,
+            },
+        },
+    };
+}
+
 module.exports = {
     createPendingOrder,
 
@@ -597,6 +699,7 @@ module.exports = {
     getOrderById,
     getOrderByOrderNumber,
     getUserOrderByOrderNumber,
+    getUserOrders,
 
     createOrder,
     updateOrder,

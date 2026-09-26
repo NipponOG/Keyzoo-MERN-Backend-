@@ -70,9 +70,44 @@ async function getMyOrder(req, res, next) {
     }
 }
 
+async function getMyOrders(req, res, next) {
+    try {
+        const userId = req.user?.userId;
+
+        if (!userId) {
+            const error = new Error(
+                'Authentication required.'
+            );
+
+            error.statusCode = 401;
+            throw error;
+        }
+
+        const {
+            page = 1,
+            pageSize = 10,
+        } = req.query;
+
+        const result =
+            await orderService.getUserOrders({
+                userId,
+                page: Number(page),
+                pageSize: Number(pageSize),
+            });
+
+        res.json({
+            success: true,
+            ...result,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 module.exports = {
     getAdminOrders,
     getOrderById,
     getMyOrder,
+    getMyOrders,
 };
 

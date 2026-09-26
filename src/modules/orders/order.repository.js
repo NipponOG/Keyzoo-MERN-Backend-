@@ -153,6 +153,68 @@ async function findAdminOrders({
     };
 }
 
+async function findUserOrders({
+    userId,
+    page = 1,
+    pageSize = 10,
+} = {}) {
+    if (!userId) {
+        return {
+            orders: [],
+            total: 0,
+            page: 1,
+            pageSize: 10,
+            totalPages: 1,
+        };
+    }
+
+    const collection = getCollection();
+
+    const currentPage = Math.max(
+        Number(page) || 1,
+        1
+    );
+
+    const limit = Math.min(
+        Math.max(Number(pageSize) || 10, 1),
+        50
+    );
+
+    const skip =
+        (currentPage - 1) * limit;
+
+    const filter = {
+        userId: userId.toString(),
+    };
+
+    const [orders, total] =
+        await Promise.all([
+            collection
+                .find(filter)
+                .sort({
+                    createdAt: -1,
+                })
+                .skip(skip)
+                .limit(limit)
+                .toArray(),
+
+            collection.countDocuments(filter),
+        ]);
+
+    const totalPages = Math.max(
+        Math.ceil(total / limit),
+        1
+    );
+
+    return {
+        orders,
+        total,
+        page: currentPage,
+        pageSize: limit,
+        totalPages,
+    };
+}
+
 /**
  * Create a new order.
  */
@@ -379,6 +441,7 @@ module.exports = {
     updateFulfillmentState,
 
     findAdminOrders,
+    findUserOrders,
     create,
     updateById,
     deleteById,
