@@ -428,13 +428,178 @@ async function updateOrderByOrderNumber(
     return order;
 }
 
+async function getUserOrderByOrderNumber(
+    userId,
+    orderNumber
+) {
+    if (!userId) {
+        const error = new Error(
+            'Authenticated user is required.'
+        );
+
+        error.statusCode = 401;
+        throw error;
+    }
+
+    if (!orderNumber) {
+        const error = new Error(
+            'Order number is required.'
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const order =
+        await orderRepository
+            .findByOrderNumber(orderNumber);
+
+    if (!order) {
+        const error = new Error(
+            'Order not found.'
+        );
+
+        error.statusCode = 404;
+        throw error;
+    }
+
+    /*
+     * Customers may only access their own orders.
+     */
+    if (
+        !order.userId ||
+        order.userId.toString() !==
+        userId.toString()
+    ) {
+        const error = new Error(
+            'Order not found.'
+        );
+
+        error.statusCode = 404;
+        throw error;
+    }
+
+    /*
+     * Only expose game keys after payment has been
+     * confirmed and fulfillment has completed.
+     */
+    const keysAreAvailable =
+        order.paymentStatus === 'paid' &&
+        order.gameKeysAssigned === true &&
+        order.deliveryStatus === 'ready';
+
+    const keys = keysAreAvailable
+        ? (order.assignedKeys || []).map(
+            (assignedKey) => ({
+                keyId:
+                    assignedKey.keyId
+                        ?.toString?.() ??
+                    assignedKey.keyId,
+
+                code: assignedKey.code,
+
+                itemId:
+                    assignedKey.itemId
+                        ?.toString?.() ??
+                    assignedKey.itemId,
+
+                itemType:
+                    assignedKey.itemType,
+
+                title:
+                    assignedKey.title,
+
+                quantityIndex:
+                    assignedKey.quantityIndex,
+            })
+        )
+        : [];
+
+    return {
+        orderNumber:
+            order.orderNumber,
+
+        totalAmount:
+            order.totalAmount,
+
+        currency:
+            order.currency,
+
+        paymentMethod:
+            order.paymentMethod,
+
+        paymentProvider:
+            order.paymentProvider,
+
+        paymentStatus:
+            order.paymentStatus,
+
+        deliveryEmail:
+            order.deliveryEmail,
+
+        status:
+            order.status,
+
+        deliveryStatus:
+            order.deliveryStatus,
+
+        deliveredAt:
+            order.deliveredAt,
+
+        items:
+            (order.cartSnapshot || []).map(
+                (item) => ({
+                    id:
+                        item.id
+                            ?.toString?.() ??
+                        item.id,
+
+                    type:
+                        item.type,
+
+                    title:
+                        item.title,
+
+                    slug:
+                        item.slug,
+
+                    quantity:
+                        item.quantity,
+
+                    unitPrice:
+                        item.unitPrice,
+
+                    subtotal:
+                        item.subtotal,
+
+                    currency:
+                        item.currency,
+
+                    region:
+                        item.region,
+
+                    var_title:
+                        item.var_title,
+
+                    image:
+                        item.image,
+                })
+            ),
+
+        keys,
+    };
+}
+
 module.exports = {
     createPendingOrder,
-    updateOrderByOrderNumber,
+
     getAdminOrders,
     getOrderById,
     getOrderByOrderNumber,
+    getUserOrderByOrderNumber,
+
     createOrder,
     updateOrder,
+    updateOrderByOrderNumber,
     deleteOrder,
 };

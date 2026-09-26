@@ -80,6 +80,7 @@ app.use('/api/v1/maintenance', maintenanceRoutes);
 
 app.use('/api/v1/search', maintenanceMiddleware, searchRoutes);
 app.use('/api/v1/newsletter', maintenanceMiddleware, newsletterRoutes);
+app.use('/api/v1/orders', orderRoutes);
 app.use('/api/v1/products', maintenanceMiddleware, productRoutes);
 app.use('/api/v1/gift-cards', maintenanceMiddleware, giftCardRoutes);
 app.use('/api/v1/game-keys', maintenanceMiddleware, gameKeyRoutes);

@@ -42,8 +42,37 @@ async function getOrderById(req, res, next) {
     }
 }
 
+async function getMyOrder(req, res, next) {
+    try {
+        const userId = req.user?.userId;
+
+        if (!userId) {
+            const error = new Error(
+                'Authentication required.'
+            );
+
+            error.statusCode = 401;
+            throw error;
+        }
+
+        const order =
+            await orderService.getUserOrderByOrderNumber(
+                userId,
+                req.params.orderNumber
+            );
+
+        res.json({
+            success: true,
+            order,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 module.exports = {
     getAdminOrders,
     getOrderById,
+    getMyOrder,
 };
 

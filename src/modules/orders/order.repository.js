@@ -268,12 +268,116 @@ async function ensureIndexes() {
     });
 }
 
+async function claimOrderForFulfillment(
+    orderNumber
+) {
+    if (!orderNumber) {
+        return null;
+    }
+
+    const now = new Date();
+
+    /*
+     * If an order has been processing for longer than
+     * this amount of time, consider the previous
+     * fulfillment attempt abandoned and allow recovery.
+     */
+    const staleProcessingThreshold =
+        new Date(
+            now.getTime() -
+            10 * 60 * 1000
+        );
+
+    return getCollection().findOneAndUpdate(
+        {
+            orderNumber,
+
+            paymentStatus: 'paid',
+
+            gameKeysAssigned: {
+                $ne: true,
+            },
+
+            $or: [
+                {
+                    deliveryStatus: {
+                        $ne: 'processing',
+                    },
+                },
+
+                {
+                    deliveryStatus:
+                        'processing',
+
+                    updatedAt: {
+                        $lt:
+                            staleProcessingThreshold,
+                    },
+                },
+            ],
+        },
+        {
+            $set: {
+                deliveryStatus:
+                    'processing',
+
+                updatedAt: now,
+            },
+        },
+        {
+            returnDocument: 'after',
+        }
+    );
+}
+
+async function updateFulfillmentState(
+    orderNumber,
+    {
+        assignedKeys,
+        totalKeysAssigned,
+        gameKeysAssigned,
+        deliveryStatus,
+        manualDeliveryRequired,
+        notes,
+    },
+    session = null
+) {
+    if (!orderNumber) {
+        return null;
+    }
+
+    return getCollection().findOneAndUpdate(
+        {
+            orderNumber,
+        },
+        {
+            $set: {
+                assignedKeys,
+                totalKeysAssigned,
+                gameKeysAssigned,
+                deliveryStatus,
+                manualDeliveryRequired,
+                notes,
+                updatedAt: new Date(),
+            },
+        },
+        {
+            returnDocument: 'after',
+            ...(session ? { session } : {}),
+        }
+    );
+}
+
 module.exports = {
     findById,
     findByOrderNumber,
     findByStripeSessionId,
     findByCashfreeOrderId,
+
     updateByOrderNumber,
+    claimOrderForFulfillment,
+    updateFulfillmentState,
+
     findAdminOrders,
     create,
     updateById,

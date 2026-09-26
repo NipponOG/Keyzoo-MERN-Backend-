@@ -58,8 +58,10 @@ async function findByCodes(codes) {
         .toArray();
 }
 
-// Assign an available key to a product
-async function assignAvailableProductKey(productId) {
+async function assignAvailableProductKey(
+    productId,
+    session = null
+) {
     const objectId = toObjectId(productId);
 
     if (!objectId) {
@@ -80,12 +82,15 @@ async function assignAvailableProductKey(productId) {
         },
         {
             returnDocument: 'after',
+            ...(session ? { session } : {}),
         }
     );
 }
 
-// Assign an available key to a gift card
-async function assignAvailableGiftCardKey(giftCardId) {
+async function assignAvailableGiftCardKey(
+    giftCardId,
+    session = null
+) {
     const objectId = toObjectId(giftCardId);
 
     if (!objectId) {
@@ -106,6 +111,7 @@ async function assignAvailableGiftCardKey(giftCardId) {
         },
         {
             returnDocument: 'after',
+            ...(session ? { session } : {}),
         }
     );
 }

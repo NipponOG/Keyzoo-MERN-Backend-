@@ -31,6 +31,10 @@ function getDatabase() {
     return database;
 }
 
+function startSession() {
+    return client.startSession();
+}
+
 async function closeDatabase() {
     await client.close();
     database = null;
@@ -39,5 +43,6 @@ async function closeDatabase() {
 module.exports = {
     connectDatabase,
     getDatabase,
+    startSession,
     closeDatabase,
 };

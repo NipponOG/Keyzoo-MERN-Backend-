@@ -3,6 +3,7 @@
 const stripe = require('./stripe.client');
 const env = require('../../../config/env');
 const orderRepository = require('../../orders/order.repository');
+const orderFulfillmentService = require('../../orders/order.fulfillment.service');
 
 function verifyStripeWebhook(req) {
     const signature =
@@ -232,16 +233,55 @@ async function handleCheckoutSessionCompleted(
         throw error;
     }
 
-    console.log(
-        '✅ Keyzoo order marked as paid:',
-        {
-            orderNumber,
-            paymentStatus:
-                updatedOrder.paymentStatus,
-            stripeSessionId:
-                updatedOrder.stripeSessionId,
+    try {
+        const fulfillment =
+            await orderFulfillmentService.fulfillPaidOrder(
+                orderNumber
+            );
+
+        if (fulfillment.alreadyFulfilled) {
+            console.log(
+                'ℹ️ Order was already fulfilled:',
+                orderNumber
+            );
+
+            return;
         }
-    );
+
+        if (fulfillment.alreadyProcessing) {
+            console.log(
+                'ℹ️ Order fulfillment is already being processed:',
+                orderNumber
+            );
+
+            return;
+        }
+
+        console.log(
+            '✅ Keyzoo order fulfillment completed:',
+            {
+                orderNumber,
+                totalKeysAssigned:
+                    fulfillment.assignedKeys.length,
+            }
+        );
+    } catch (fulfillmentError) {
+        /*
+         * The fulfillment service already records failed
+         * fulfillment as manual delivery.
+         *
+         * We acknowledge the Stripe webhook so Stripe
+         * does not repeatedly retry a payment that has
+         * already been confirmed.
+         */
+        console.error(
+            '⚠️ Payment succeeded but automatic fulfillment failed:',
+            {
+                orderNumber,
+                error: fulfillmentError.message,
+            }
+        );
+    }
 }
 
 async function handleStripeWebhook(
