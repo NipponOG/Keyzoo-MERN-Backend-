@@ -19,6 +19,8 @@ const giftCardRoutes = require('./modules/gift-cards/gift-card.routes');
 const gameKeyRoutes = require('./modules/game-keys/game-key.routes');
 const gameKeyAdminRoutes = require('./modules/game-keys/game-key.admin.routes');
 
+const paymentRoutes = require('./modules/payments/payment.routes');
+
 const errorMiddleware = require('./middleware/error.middleware');
 const maintenanceMiddleware = require('./middleware/maintenance.middleware');
 
@@ -50,6 +52,11 @@ const app = express();
 app.use(helmet());
 app.use(cors());
 app.use(morgan('dev'));
+app.use('/api/v1/payments/stripe/webhook',
+    express.raw({
+        type: 'application/json',
+    })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -57,7 +64,7 @@ app.use(express.urlencoded({ extended: true }));
 // Health
 // ─────────────────────────────────────────────
 
-app.get('/api/v1/health', (req, res) => { res.json({ success: true, message: 'Keyzoo backend is running',}); });
+app.get('/api/v1/health', (req, res) => { res.json({ success: true, message: 'Keyzoo backend is running', }); });
 
 // ─────────────────────────────────────────────
 // Maintenance status
@@ -82,6 +89,9 @@ app.use('/api/v1/home/game-banners', maintenanceMiddleware, gameBannerRoutes);
 app.use('/api/v1/home/promo-banners', maintenanceMiddleware, promoBannerRoutes);
 app.use('/api/v1/home/category-banners', maintenanceMiddleware, categoryBannerRoutes);
 app.use('/api/v1/home/ad-banners', maintenanceMiddleware, adBannerRoutes);
+
+app.use('/api/v1/payments/stripe/webhook', paymentRoutes);
+app.use('/api/v1/payments', maintenanceMiddleware, paymentRoutes);
 
 // ─────────────────────────────────────────────
 // Admin routes

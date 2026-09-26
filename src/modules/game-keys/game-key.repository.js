@@ -146,6 +146,32 @@ async function findByGiftCardId(giftCardId) {
         .toArray();
 }
 
+async function countAvailableProductKeys(productId) {
+    const objectId = toObjectId(productId);
+
+    if (!objectId) {
+        return 0;
+    }
+
+    return getCollection().countDocuments({
+        productId: objectId,
+        isAvailable: true,
+    });
+}
+
+async function countAvailableGiftCardKeys(giftCardId) {
+    const objectId = toObjectId(giftCardId);
+
+    if (!objectId) {
+        return 0;
+    }
+
+    return getCollection().countDocuments({
+        giftCardId: objectId,
+        isAvailable: true,
+    });
+}
+
 // Create one game key
 async function create(gameKeyData) {
     const document = createGameKeyDocument(gameKeyData);
@@ -278,6 +304,9 @@ module.exports = {
 
     findByProductId,
     findByGiftCardId,
+
+    countAvailableProductKeys,
+    countAvailableGiftCardKeys,
 
     create,
     createMany,

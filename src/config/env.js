@@ -29,6 +29,26 @@ const env = {
         url: process.env.STRAPI_URL,
         token: process.env.STRAPI_TOKEN,
     },
+
+    payments: {
+        stripe: {
+            secretKey: process.env.STRIPE_SECRET_KEY,
+            webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+        },
+
+        razorpay: {
+            keyId: process.env.RAZORPAY_KEY_ID,
+            keySecret: process.env.RAZORPAY_KEY_SECRET,
+            webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET,
+        },
+
+        cashfree: {
+            appId: process.env.CASHFREE_APP_ID,
+            secretKey: process.env.CASHFREE_SECRET_KEY,
+            webhookSecret: process.env.CASHFREE_WEBHOOK_SECRET,
+        },
+    },
+
 };
 
 if (!env.mongodb.uri) {

@@ -33,6 +33,30 @@ async function findByOrderNumber(orderNumber) {
     });
 }
 
+async function updateByOrderNumber(
+    orderNumber,
+    update
+) {
+    if (!orderNumber) {
+        return null;
+    }
+
+    return getCollection().findOneAndUpdate(
+        {
+            orderNumber,
+        },
+        {
+            $set: {
+                ...update,
+                updatedAt: new Date(),
+            },
+        },
+        {
+            returnDocument: 'after',
+        }
+    );
+}
+
 /**
  * Find one order by Stripe session ID.
  */
@@ -249,6 +273,7 @@ module.exports = {
     findByOrderNumber,
     findByStripeSessionId,
     findByCashfreeOrderId,
+    updateByOrderNumber,
     findAdminOrders,
     create,
     updateById,
