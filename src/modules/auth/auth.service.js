@@ -18,18 +18,40 @@ async function registerUser({
     firstName,
     lastName,
     email,
+    phone,
     password,
     dateOfBirth,
 }) {
-    if (!firstName || !lastName || !email || !password) {
+
+    if (
+        !firstName ||
+        !lastName ||
+        !email ||
+        !phone ||
+        !password
+    ) {
         const error = new Error(
-            'First name, last name, email and password are required'
+            'First name, last name, email, phone and password are required'
         );
+
         error.statusCode = 400;
         throw error;
     }
 
     const normalizedEmail = email.trim().toLowerCase();
+
+    const normalizedPhone = phone
+        .toString()
+        .replace(/\D/g, '');
+
+    if (!/^[6-9]\d{9}$/.test(normalizedPhone)) {
+        const error = new Error(
+            'Please enter a valid 10-digit Indian phone number.'
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
 
     const existingUser = await repository.findByEmail(normalizedEmail);
 
@@ -44,6 +66,7 @@ async function registerUser({
     const user = await repository.create({
         username: `${firstName.trim()} ${lastName.trim()}`,
         email: normalizedEmail,
+        phone: normalizedPhone,
         passwordHash,
         firstName: firstName.trim(),
         lastName: lastName.trim(),

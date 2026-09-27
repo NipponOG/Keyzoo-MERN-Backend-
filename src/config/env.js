@@ -45,7 +45,7 @@ const env = {
         cashfree: {
             appId: process.env.CASHFREE_APP_ID,
             secretKey: process.env.CASHFREE_SECRET_KEY,
-            webhookSecret: process.env.CASHFREE_WEBHOOK_SECRET,
+            environment: process.env.CASHFREE_ENVIRONMENT || 'sandbox',
         },
     },
 

@@ -12,6 +12,7 @@ async function register(req, res, next) {
             firstName,
             lastName,
             email,
+            phone,
             password,
             dateOfBirth,
             turnstileToken,
@@ -32,6 +33,7 @@ async function register(req, res, next) {
             firstName,
             lastName,
             email,
+            phone,
             password,
             dateOfBirth,
         });

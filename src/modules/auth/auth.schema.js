@@ -9,8 +9,10 @@ function createUserDocument(data = {}) {
     const now = new Date();
 
     return {
+
         username: data.username ?? '',
         email: data.email ?? '',
+        phone: data.phone ?? '',
 
         passwordHash: data.passwordHash ?? null,
 

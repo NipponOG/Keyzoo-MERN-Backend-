@@ -1,6 +1,7 @@
 'use strict';
 
 const stripeService = require('./stripe/stripe.service');
+const cashfreeService = require('./cashfree/cashfree.service');
 
 async function createStripeCheckout({
     orderNumber,
@@ -73,6 +74,29 @@ async function createStripeCheckout({
     });
 }
 
+async function createCashfreeCheckout({
+    orderNumber,
+    amount,
+    currency,
+    customerId,
+    customerEmail,
+    customerPhone,
+    returnUrl,
+    notifyUrl,
+}) {
+    return cashfreeService.createCheckoutOrder({
+        orderNumber,
+        amount,
+        currency,
+        customerId,
+        customerEmail,
+        customerPhone,
+        returnUrl,
+        notifyUrl,
+    });
+}
+
 module.exports = {
     createStripeCheckout,
+    createCashfreeCheckout,
 };

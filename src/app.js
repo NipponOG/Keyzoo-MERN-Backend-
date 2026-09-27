@@ -57,6 +57,12 @@ app.use('/api/v1/payments/stripe/webhook',
         type: 'application/json',
     })
 );
+app.use(
+    '/api/v1/payments/cashfree/webhook',
+    express.raw({
+        type: 'application/json',
+    })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
