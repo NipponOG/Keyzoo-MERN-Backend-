@@ -63,14 +63,20 @@ async function findCheckoutItem(itemId) {
         await productRepository.findById(itemId);
 
     if (product) {
-        return product;
+        return {
+            item: product,
+            type: 'product',
+        };
     }
 
     const giftCard =
         await giftCardRepository.findById(itemId);
 
     if (giftCard) {
-        return giftCard;
+        return {
+            item: giftCard,
+            type: 'gift-card',
+        };
     }
 
     const error = new Error(
@@ -167,8 +173,22 @@ async function createPendingOrder({
         const quantity =
             validateQuantity(cartItem.quantity);
 
-        const item =
+        const {
+            item,
+            type: actualItemType,
+        } =
             await findCheckoutItem(cartItem.id);
+
+        if (
+            cartItem.type !== actualItemType
+        ) {
+            const error = new Error(
+                `Invalid item type for "${item.title}".`
+            );
+
+            error.statusCode = 400;
+            throw error;
+        }
 
         if (item.status !== 'published') {
             const error = new Error(
@@ -188,13 +208,23 @@ async function createPendingOrder({
             throw error;
         }
 
-        if (
-            item.currency &&
-            item.currency.toUpperCase() !==
-            normalizedCurrency
-        ) {
+        const itemCurrency =
+            typeof item.currency === 'string'
+                ? item.currency.trim().toUpperCase()
+                : '';
+
+        if (!itemCurrency) {
             const error = new Error(
-                `"${item.title}" uses ${item.currency}, not ${normalizedCurrency}.`
+                `"${item.title}" does not have a valid currency.`
+            );
+
+            error.statusCode = 409;
+            throw error;
+        }
+
+        if (itemCurrency !== normalizedCurrency) {
+            const error = new Error(
+                `"${item.title}" uses ${itemCurrency}, not ${normalizedCurrency}.`
             );
 
             error.statusCode = 400;
@@ -233,7 +263,7 @@ async function createPendingOrder({
 
         cartSnapshot.push({
             id: item._id,
-            type: item.type,
+            type: actualItemType,
 
             title: item.title,
             slug: item.slug ?? null,

@@ -411,6 +411,12 @@ async function updateFulfillmentState(
     return getCollection().findOneAndUpdate(
         {
             orderNumber,
+
+            paymentStatus: 'paid',
+
+            gameKeysAssigned: {
+                $ne: true,
+            },
         },
         {
             $set: {
@@ -430,6 +436,32 @@ async function updateFulfillmentState(
     );
 }
 
+async function markOrderPaid(
+    orderNumber,
+    paymentData
+) {
+    if (!orderNumber) {
+        return null;
+    }
+
+    return getCollection().findOneAndUpdate(
+        {
+            orderNumber,
+            paymentStatus: 'pending',
+        },
+        {
+            $set: {
+                ...paymentData,
+                paymentStatus: 'paid',
+                updatedAt: new Date(),
+            },
+        },
+        {
+            returnDocument: 'after',
+        }
+    );
+}
+
 module.exports = {
     findById,
     findByOrderNumber,
@@ -437,6 +469,8 @@ module.exports = {
     findByCashfreeOrderId,
 
     updateByOrderNumber,
+    markOrderPaid,
+
     claimOrderForFulfillment,
     updateFulfillmentState,
 

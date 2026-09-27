@@ -198,38 +198,45 @@ async function handleCheckoutSessionCompleted(
     }
 
     const updatedOrder =
-        await orderRepository.updateByOrderNumber(
+        await orderRepository.markOrderPaid(
             orderNumber,
             {
-                paymentStatus: 'paid',
                 paymentProvider: 'stripe',
-
                 stripeSessionId: session.id,
-
                 stripePaymentIntentId:
-                    typeof session.payment_intent ===
-                        'string'
+                    typeof session.payment_intent === 'string'
                         ? session.payment_intent
                         : null,
-
                 paymentMethod:
-                    Array.isArray(
-                        session.payment_method_types
-                    ) &&
+                    Array.isArray(session.payment_method_types) &&
                         session.payment_method_types.length
-                        ? session
-                            .payment_method_types[0]
+                        ? session.payment_method_types[0]
                         : null,
             }
         );
 
     if (!updatedOrder) {
+        const currentOrder =
+            await orderRepository.findByOrderNumber(
+                orderNumber
+            );
+
+        if (
+            currentOrder?.paymentStatus === 'paid' &&
+            currentOrder?.stripeSessionId === session.id
+        ) {
+            console.log(
+                'ℹ️ Stripe webhook already processed:',
+                orderNumber
+            );
+
+            return;
+        }
+
         const error = new Error(
-            'Failed to update paid order.'
+            'Failed to mark order as paid.'
         );
-
-        error.statusCode = 500;
-
+        error.statusCode = 409;
         throw error;
     }
 

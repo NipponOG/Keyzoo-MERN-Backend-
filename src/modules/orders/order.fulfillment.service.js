@@ -226,11 +226,39 @@ async function fulfillPaidOrder(
             }
         );
 
-        const updatedOrder =
-            await orderRepository
-                .findByOrderNumber(
-                    orderNumber
-                );
+        let updatedOrder;
+
+        try {
+            updatedOrder =
+                await orderRepository
+                    .findByOrderNumber(
+                        orderNumber
+                    );
+        } catch (readError) {
+            /*
+             * The fulfillment transaction has already committed.
+             *
+             * Do not enter the failure/manual-delivery path here,
+             * because the keys have already been assigned and the
+             * order state has already been saved successfully.
+             */
+            console.error(
+                '⚠️ Order was fulfilled, but the final order read failed:',
+                {
+                    orderNumber,
+                    error: readError.message,
+                }
+            );
+
+            return {
+                alreadyProcessing: false,
+                alreadyFulfilled: false,
+
+                order: null,
+
+                assignedKeys,
+            };
+        }
 
         return {
             alreadyProcessing: false,
@@ -250,25 +278,35 @@ async function fulfillPaidOrder(
          * the transaction has failed.
          */
         try {
-            await orderRepository
-                .updateFulfillmentState(
-                    orderNumber,
+            const manualOrder =
+                await orderRepository
+                    .updateFulfillmentState(
+                        orderNumber,
+                        {
+                            assignedKeys: [],
+                            totalKeysAssigned: 0,
+
+                            gameKeysAssigned: false,
+
+                            deliveryStatus:
+                                'manual',
+
+                            manualDeliveryRequired:
+                                true,
+
+                            notes:
+                                `Automatic fulfillment failed: ${error.message}`,
+                        }
+                    );
+
+            if (!manualOrder) {
+                console.error(
+                    '❌ Failed to record manual fulfillment state: order could not be updated.',
                     {
-                        assignedKeys: [],
-                        totalKeysAssigned: 0,
-
-                        gameKeysAssigned: false,
-
-                        deliveryStatus:
-                            'manual',
-
-                        manualDeliveryRequired:
-                            true,
-
-                        notes:
-                            `Automatic fulfillment failed: ${error.message}`,
+                        orderNumber,
                     }
                 );
+            }
         } catch (
         stateUpdateError
         ) {
