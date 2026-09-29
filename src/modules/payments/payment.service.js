@@ -2,6 +2,7 @@
 
 const stripeService = require('./stripe/stripe.service');
 const cashfreeService = require('./cashfree/cashfree.service');
+const razorpayService = require('./razorpay/razorpay.service');
 
 async function createStripeCheckout({
     orderNumber,
@@ -96,7 +97,20 @@ async function createCashfreeCheckout({
     });
 }
 
+async function createRazorpayCheckout({
+    orderNumber,
+    amount,
+    currency,
+}) {
+    return razorpayService.createCheckoutOrder({
+        orderNumber,
+        amount,
+        currency,
+    });
+}
+
 module.exports = {
     createStripeCheckout,
     createCashfreeCheckout,
+    createRazorpayCheckout,
 };

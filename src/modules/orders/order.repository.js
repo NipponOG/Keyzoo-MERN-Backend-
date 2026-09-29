@@ -76,6 +76,21 @@ async function findByCashfreeOrderId(cashfreeOrderId) {
 }
 
 /**
+ * Find one order by Razorpay order ID.
+ */
+async function findByRazorpayOrderId(
+    razorpayOrderId
+) {
+    if (!razorpayOrderId) {
+        return null;
+    }
+
+    return getCollection().findOne({
+        razorpayOrderId,
+    });
+}
+
+/**
  * Find paginated orders for the admin dashboard.
  *
  * Supported filters:
@@ -302,6 +317,10 @@ async function ensureIndexes() {
     });
 
     await collection.createIndex({
+        razorpayOrderId: 1,
+    });
+
+    await collection.createIndex({
         deliveryEmail: 1,
     });
 
@@ -467,6 +486,7 @@ module.exports = {
     findByOrderNumber,
     findByStripeSessionId,
     findByCashfreeOrderId,
+    findByRazorpayOrderId,
 
     updateByOrderNumber,
     markOrderPaid,

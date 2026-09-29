@@ -20,6 +20,7 @@ const gameKeyRoutes = require('./modules/game-keys/game-key.routes');
 const gameKeyAdminRoutes = require('./modules/game-keys/game-key.admin.routes');
 
 const paymentRoutes = require('./modules/payments/payment.routes');
+const couponRoutes = require('./modules/coupons/coupon.routes');
 
 const errorMiddleware = require('./middleware/error.middleware');
 const maintenanceMiddleware = require('./middleware/maintenance.middleware');
@@ -63,6 +64,12 @@ app.use(
         type: 'application/json',
     })
 );
+app.use(
+    '/api/v1/payments/razorpay/webhook',
+    express.raw({
+        type: 'application/json',
+    })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -99,6 +106,8 @@ app.use('/api/v1/home/ad-banners', maintenanceMiddleware, adBannerRoutes);
 
 app.use('/api/v1/payments/stripe/webhook', paymentRoutes);
 app.use('/api/v1/payments', maintenanceMiddleware, paymentRoutes);
+
+app.use('/api/v1/coupons', maintenanceMiddleware, couponRoutes);
 
 // ─────────────────────────────────────────────
 // Admin routes

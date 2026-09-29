@@ -8,8 +8,12 @@ function createOrderDocument(data = {}) {
         orderNumber: data.orderNumber ?? '',
         cashfreeOrderId: data.cashfreeOrderId ?? undefined,
 
+        subtotalAmount: data.subtotalAmount ?? 0,
+        discountAmount: data.discountAmount ?? 0,
         totalAmount: data.totalAmount ?? 0,
         currency: data.currency ?? 'INR',
+
+        coupon: data.coupon ?? null,
 
         paymentMethod: data.paymentMethod ?? null,
         paymentProvider: data.paymentProvider ?? null,

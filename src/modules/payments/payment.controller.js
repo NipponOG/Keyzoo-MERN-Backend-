@@ -4,11 +4,14 @@ const paymentService = require('./payment.service');
 const orderService = require('../orders/order.service');
 const authRepository = require('../auth/auth.repository');
 
+const env = require('../../config/env');
+
 async function createStripeCheckout(req, res, next) {
     try {
         const {
             items,
             currency,
+            couponCode,
         } = req.body || {};
 
         if (
@@ -86,6 +89,7 @@ async function createStripeCheckout(req, res, next) {
                 items,
                 deliveryEmail: user.email,
                 currency,
+                couponCode,
             });
 
         try {
@@ -175,6 +179,7 @@ async function createCashfreeCheckout(req, res, next) {
         const {
             items,
             currency,
+            couponCode,
         } = req.body || {};
 
         if (
@@ -265,6 +270,7 @@ async function createCashfreeCheckout(req, res, next) {
                 items,
                 deliveryEmail: user.email,
                 currency,
+                couponCode,
             });
 
         try {
@@ -369,7 +375,193 @@ async function createCashfreeCheckout(req, res, next) {
     }
 }
 
+async function createRazorpayCheckout(req, res, next) {
+    try {
+        const {
+            items,
+            currency,
+            couponCode,
+        } = req.body;
+
+        if (
+            !Array.isArray(items) ||
+            items.length === 0
+        ) {
+            const error = new Error(
+                'Checkout items are required.'
+            );
+
+            error.statusCode = 400;
+
+            throw error;
+        }
+
+        if (
+            typeof currency !== 'string' ||
+            !currency.trim()
+        ) {
+            const error = new Error(
+                'Checkout currency is required.'
+            );
+
+            error.statusCode = 400;
+
+            throw error;
+        }
+
+        const userId = req.user?.userId;
+
+        if (!userId) {
+            const error = new Error(
+                'Authentication required.'
+            );
+
+            error.statusCode = 401;
+
+            throw error;
+        }
+
+        const user =
+            await authRepository.findById(userId);
+
+        if (!user) {
+            const error = new Error(
+                'User account not found.'
+            );
+
+            error.statusCode = 404;
+
+            throw error;
+        }
+
+        if (user.blocked === true) {
+            const error = new Error(
+                'Your account is blocked.'
+            );
+
+            error.statusCode = 403;
+
+            throw error;
+        }
+
+        if (!user.email) {
+            const error = new Error(
+                'A valid email address is required for checkout.'
+            );
+
+            error.statusCode = 400;
+
+            throw error;
+        }
+
+        const pendingOrder =
+            await orderService.createPendingOrder({
+                userId,
+                items,
+                deliveryEmail: user.email,
+                currency,
+                couponCode,
+            });
+
+        try {
+            const razorpay =
+                await paymentService.createRazorpayCheckout({
+                    orderNumber:
+                        pendingOrder.orderNumber,
+
+                    amount:
+                        pendingOrder.totalAmount,
+
+                    currency:
+                        pendingOrder.currency,
+                });
+
+            const updatedOrder =
+                await orderService.updateOrderByOrderNumber(
+                    pendingOrder.orderNumber,
+                    {
+                        razorpayOrderId:
+                            razorpay.orderId,
+                    }
+                );
+
+            if (!updatedOrder) {
+                const error = new Error(
+                    'Failed to save Razorpay order information.'
+                );
+
+                error.statusCode = 500;
+
+                throw error;
+            }
+
+            return res.status(200).json({
+                success: true,
+
+                order: {
+                    id:
+                        pendingOrder._id,
+
+                    orderNumber:
+                        pendingOrder.orderNumber,
+
+                    totalAmount:
+                        pendingOrder.totalAmount,
+
+                    currency:
+                        pendingOrder.currency,
+
+                    paymentStatus:
+                        pendingOrder.paymentStatus,
+                },
+
+                checkout: {
+                    orderId:
+                        razorpay.orderId,
+
+                    amount:
+                        razorpay.amount,
+
+                    currency:
+                        razorpay.currency,
+
+                    status:
+                        razorpay.status,
+
+                    keyId:
+                        env.payments.razorpay.keyId,
+                },
+            });
+        } catch (paymentError) {
+            try {
+                await orderService.updateOrderByOrderNumber(
+                    pendingOrder.orderNumber,
+                    {
+                        status: 'cancelled',
+                        paymentStatus: 'failed',
+                    }
+                );
+            } catch (cancelError) {
+                console.error(
+                    '❌ Failed to cancel Razorpay pending order:',
+                    {
+                        orderNumber:
+                            pendingOrder.orderNumber,
+                        error:
+                            cancelError.message,
+                    }
+                );
+            }
+
+            throw paymentError;
+        }
+    } catch (error) {
+        next(error);
+    }
+}
+
 module.exports = {
     createStripeCheckout,
     createCashfreeCheckout,
+    createRazorpayCheckout,
 };

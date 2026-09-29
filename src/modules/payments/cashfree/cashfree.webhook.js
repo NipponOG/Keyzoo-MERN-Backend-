@@ -165,6 +165,18 @@ async function handleCashfreeWebhook(
         const paymentId =
             payment?.cf_payment_id;
 
+        if (payload?.type !== 'PAYMENT_SUCCESS_WEBHOOK') {
+            console.log(
+                'ℹ️ Cashfree webhook event ignored:',
+                payload?.type
+            );
+
+            return res.status(200).json({
+                success: true,
+                message: 'Webhook event ignored.',
+            });
+        }
+
         if (!orderId) {
             const error = new Error(
                 'Cashfree webhook is missing order ID.'
@@ -235,7 +247,9 @@ async function handleCashfreeWebhook(
                 ? verifiedPayments.find(
                     (item) =>
                         item?.payment_status ===
-                        'SUCCESS'
+                        'SUCCESS' &&
+                        item?.cf_payment_id?.toString() ===
+                        paymentId?.toString()
                 )
                 : null;
 

@@ -105,11 +105,238 @@ async function getAvailableKeyCount(item) {
     return 0;
 }
 
+// async function createPendingOrder({
+//     userId,
+//     items,
+//     deliveryEmail,
+//     currency,
+// }) {
+//     if (!userId) {
+//         const error = new Error(
+//             'Authenticated user is required.'
+//         );
+
+//         error.statusCode = 401;
+//         throw error;
+//     }
+
+//     if (
+//         !Array.isArray(items) ||
+//         items.length === 0
+//     ) {
+//         const error = new Error(
+//             'Checkout items are required.'
+//         );
+
+//         error.statusCode = 400;
+//         throw error;
+//     }
+
+//     if (!deliveryEmail) {
+//         const error = new Error(
+//             'Delivery email is required.'
+//         );
+
+//         error.statusCode = 400;
+//         throw error;
+//     }
+
+//     const normalizedCurrency =
+//         typeof currency === 'string'
+//             ? currency.trim().toUpperCase()
+//             : '';
+
+//     if (!normalizedCurrency) {
+//         const error = new Error(
+//             'Currency is required.'
+//         );
+
+//         error.statusCode = 400;
+//         throw error;
+//     }
+
+//     const cartSnapshot = [];
+
+//     let totalAmount = 0;
+//     let totalKeysRequired = 0;
+
+//     for (const cartItem of items) {
+//         if (!cartItem?.id) {
+//             const error = new Error(
+//                 'Each checkout item must contain a valid SKU ID.'
+//             );
+
+//             error.statusCode = 400;
+//             throw error;
+//         }
+
+//         const quantity =
+//             validateQuantity(cartItem.quantity);
+
+//         const {
+//             item,
+//             type: actualItemType,
+//         } =
+//             await findCheckoutItem(cartItem.id);
+
+//         if (
+//             cartItem.type !== actualItemType
+//         ) {
+//             const error = new Error(
+//                 `Invalid item type for "${item.title}".`
+//             );
+
+//             error.statusCode = 400;
+//             throw error;
+//         }
+
+//         if (item.status !== 'published') {
+//             const error = new Error(
+//                 `"${item.title}" is not currently available for purchase.`
+//             );
+
+//             error.statusCode = 409;
+//             throw error;
+//         }
+
+//         if (item.available !== true) {
+//             const error = new Error(
+//                 `"${item.title}" is currently unavailable.`
+//             );
+
+//             error.statusCode = 409;
+//             throw error;
+//         }
+
+//         const itemCurrency =
+//             typeof item.currency === 'string'
+//                 ? item.currency.trim().toUpperCase()
+//                 : '';
+
+//         if (!itemCurrency) {
+//             const error = new Error(
+//                 `"${item.title}" does not have a valid currency.`
+//             );
+
+//             error.statusCode = 409;
+//             throw error;
+//         }
+
+//         if (itemCurrency !== normalizedCurrency) {
+//             const error = new Error(
+//                 `"${item.title}" uses ${itemCurrency}, not ${normalizedCurrency}.`
+//             );
+
+//             error.statusCode = 400;
+//             throw error;
+//         }
+
+//         const unitPrice =
+//             getEffectivePrice(item);
+
+//         if (unitPrice <= 0) {
+//             const error = new Error(
+//                 `"${item.title}" does not have a valid price.`
+//             );
+
+//             error.statusCode = 409;
+//             throw error;
+//         }
+
+//         const availableKeys =
+//             await getAvailableKeyCount(item);
+
+//         if (availableKeys < quantity) {
+//             const error = new Error(
+//                 `Not enough keys available for "${item.title}".`
+//             );
+
+//             error.statusCode = 409;
+//             throw error;
+//         }
+
+//         const subtotal =
+//             unitPrice * quantity;
+
+//         totalAmount += subtotal;
+//         totalKeysRequired += quantity;
+
+//         cartSnapshot.push({
+//             id: item._id,
+//             type: actualItemType,
+
+//             title: item.title,
+//             slug: item.slug ?? null,
+
+//             quantity,
+
+//             unitPrice,
+//             subtotal,
+
+//             currency: item.currency,
+
+//             region: item.region ?? null,
+//             var_title: item.var_title ?? null,
+
+//             image: item.image ?? null,
+//         });
+//     }
+
+//     if (totalAmount <= 0) {
+//         const error = new Error(
+//             'Order total must be greater than zero.'
+//         );
+
+//         error.statusCode = 400;
+//         throw error;
+//     }
+
+//     const orderNumber =
+//         createOrderNumber();
+
+//     const order =
+//         await orderRepository.create({
+//             orderNumber,
+
+//             totalAmount,
+//             currency: normalizedCurrency,
+
+//             paymentMethod: null,
+//             paymentProvider: null,
+
+//             paymentStatus: 'pending',
+
+//             deliveryEmail,
+
+//             status: 'processing',
+//             deliveryStatus: 'pending',
+
+//             gameKeysAssigned: false,
+//             deliveredAt: null,
+
+//             cartSnapshot,
+
+//             userId,
+
+//             assignedKeys: [],
+
+//             manualDeliveryRequired: false,
+
+//             totalKeysRequired,
+//             totalKeysAssigned: 0,
+
+//             notes: null,
+//         });
+
+//     return order;
+// }
+
 async function createPendingOrder({
     userId,
     items,
     deliveryEmail,
     currency,
+    couponCode = null,
 }) {
     if (!userId) {
         const error = new Error(
@@ -157,7 +384,7 @@ async function createPendingOrder({
 
     const cartSnapshot = [];
 
-    let totalAmount = 0;
+    let subtotalAmount = 0;
     let totalKeysRequired = 0;
 
     for (const cartItem of items) {
@@ -222,7 +449,10 @@ async function createPendingOrder({
             throw error;
         }
 
-        if (itemCurrency !== normalizedCurrency) {
+        if (
+            itemCurrency !==
+            normalizedCurrency
+        ) {
             const error = new Error(
                 `"${item.title}" uses ${itemCurrency}, not ${normalizedCurrency}.`
             );
@@ -255,10 +485,10 @@ async function createPendingOrder({
             throw error;
         }
 
-        const subtotal =
+        const itemSubtotal =
             unitPrice * quantity;
 
-        totalAmount += subtotal;
+        subtotalAmount += itemSubtotal;
         totalKeysRequired += quantity;
 
         cartSnapshot.push({
@@ -271,7 +501,7 @@ async function createPendingOrder({
             quantity,
 
             unitPrice,
-            subtotal,
+            subtotal: itemSubtotal,
 
             currency: item.currency,
 
@@ -280,6 +510,50 @@ async function createPendingOrder({
 
             image: item.image ?? null,
         });
+    }
+
+    if (subtotalAmount <= 0) {
+        const error = new Error(
+            'Order subtotal must be greater than zero.'
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    let discountAmount = 0;
+    let totalAmount = subtotalAmount;
+    let couponSnapshot = null;
+
+    if (
+        typeof couponCode === 'string' &&
+        couponCode.trim()
+    ) {
+        const couponService =
+            require('../coupons/coupon.service');
+
+        const couponResult =
+            await couponService.validateAndCalculateCoupon({
+                code: couponCode,
+                subtotal: subtotalAmount,
+            });
+
+        discountAmount =
+            couponResult.discount;
+
+        totalAmount =
+            couponResult.total;
+
+        couponSnapshot = {
+            couponId: couponResult.couponId,
+            code: couponResult.code,
+            discountType:
+                couponResult.discountType,
+            discountValue:
+                couponResult.discountValue,
+            discount:
+                couponResult.discount,
+        };
     }
 
     if (totalAmount <= 0) {
@@ -300,6 +574,10 @@ async function createPendingOrder({
 
             totalAmount,
             currency: normalizedCurrency,
+
+            subtotalAmount,
+            discountAmount,
+            coupon: couponSnapshot,
 
             paymentMethod: null,
             paymentProvider: null,
@@ -546,11 +824,19 @@ async function getUserOrderByOrderNumber(
         : [];
 
     return {
-        orderNumber:
-            order.orderNumber,
+        orderNumber: order.orderNumber,
+
+        subtotalAmount:
+            order.subtotalAmount ?? order.totalAmount,
+
+        discountAmount:
+            order.discountAmount ?? 0,
 
         totalAmount:
             order.totalAmount,
+
+        coupon:
+            order.coupon ?? null,
 
         currency:
             order.currency,
