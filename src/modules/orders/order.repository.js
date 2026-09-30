@@ -455,9 +455,36 @@ async function updateFulfillmentState(
     );
 }
 
+// async function markOrderPaid(
+//     orderNumber,
+//     paymentData
+// ) {
+//     if (!orderNumber) {
+//         return null;
+//     }
+
+//     return getCollection().findOneAndUpdate(
+//         {
+//             orderNumber,
+//             paymentStatus: 'pending',
+//         },
+//         {
+//             $set: {
+//                 ...paymentData,
+//                 paymentStatus: 'paid',
+//                 updatedAt: new Date(),
+//             },
+//         },
+//         {
+//             returnDocument: 'after',
+//         }
+//     );
+// }
+
 async function markOrderPaid(
     orderNumber,
-    paymentData
+    paymentData,
+    session = null
 ) {
     if (!orderNumber) {
         return null;
@@ -477,6 +504,7 @@ async function markOrderPaid(
         },
         {
             returnDocument: 'after',
+            ...(session ? { session } : {}),
         }
     );
 }

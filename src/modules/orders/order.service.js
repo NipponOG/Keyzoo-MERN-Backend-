@@ -2,6 +2,8 @@
 
 const crypto = require('crypto');
 
+const { startSession, } = require('../../config/database');
+const couponRepository = require('../coupons/coupon.repository');
 const orderRepository = require('./order.repository');
 
 const productRepository = require('../products/product.repository');
@@ -1008,9 +1010,73 @@ async function getUserOrders({
     };
 }
 
+async function markOrderPaidWithCoupon(
+    orderNumber,
+    paymentData
+) {
+    if (!orderNumber) {
+        return null;
+    }
+
+    const session = startSession();
+
+    try {
+        let updatedOrder = null;
+
+        await session.withTransaction(
+            async () => {
+                updatedOrder =
+                    await orderRepository.markOrderPaid(
+                        orderNumber,
+                        paymentData,
+                        session
+                    );
+
+                /*
+                 * If the order was already paid, do not
+                 * consume the coupon again.
+                 */
+                if (!updatedOrder) {
+                    return;
+                }
+
+                const couponId =
+                    updatedOrder.coupon?.couponId;
+
+                if (!couponId) {
+                    return;
+                }
+
+                const updatedCoupon =
+                    await couponRepository.incrementUsage(
+                        couponId,
+                        {
+                            session,
+                        }
+                    );
+
+                if (!updatedCoupon) {
+                    const error = new Error(
+                        'Coupon usage could not be recorded.'
+                    );
+
+                    error.statusCode = 409;
+
+                    throw error;
+                }
+            }
+        );
+
+        return updatedOrder;
+    } finally {
+        await session.endSession();
+    }
+}
+
 module.exports = {
     createPendingOrder,
-
+    markOrderPaidWithCoupon,
+    
     getAdminOrders,
     getOrderById,
     getOrderByOrderNumber,

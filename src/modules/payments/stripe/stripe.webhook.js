@@ -3,6 +3,7 @@
 const stripe = require('./stripe.client');
 const env = require('../../../config/env');
 const orderRepository = require('../../orders/order.repository');
+const orderService = require('../../orders/order.service');
 const orderFulfillmentService = require('../../orders/order.fulfillment.service');
 
 function verifyStripeWebhook(req) {
@@ -198,7 +199,7 @@ async function handleCheckoutSessionCompleted(
     }
 
     const updatedOrder =
-        await orderRepository.markOrderPaid(
+        await orderService.markOrderPaidWithCoupon(
             orderNumber,
             {
                 paymentProvider: 'stripe',

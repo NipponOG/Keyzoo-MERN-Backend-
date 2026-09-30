@@ -37,6 +37,8 @@ const orderRoutes = require('./modules/orders/order.routes');
 const mediaRoutes = require('./modules/media/media.routes');
 const maintenanceRoutes = require('./modules/maintenance/maintenance.routes');
 
+const couponAdminRoutes = require('./modules/coupons/coupon.admin.routes');
+
 const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
 const inventoryRoutes = require('./modules/inventory/inventory.routes');
 
@@ -127,6 +129,7 @@ app.use('/api/v1/admin/game-banners', gameBannerAdminRoutes);
 app.use('/api/v1/admin/promo-banners', promoBannerAdminRoutes);
 app.use('/api/v1/admin/category-banners', categoryBannerAdminRoutes);
 app.use('/api/v1/admin/ad-banners', adBannerAdminRoutes);
+app.use('/api/v1/admin/coupons', couponAdminRoutes);
 
 // ─────────────────────────────────────────────
 // Error handler

@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const env = require('../../../config/env');
 const razorpayService = require('./razorpay.service');
 const orderRepository = require('../../orders/order.repository');
+const orderService = require('../../orders/order.service');
 
 const {
     fulfillPaidOrder,
@@ -378,7 +379,7 @@ async function handleRazorpayWebhook(
         }
 
         const updatedOrder =
-            await orderRepository.markOrderPaid(
+            await orderService.markOrderPaidWithCoupon(
                 keyzooOrder.orderNumber,
                 {
                     razorpayOrderId:

@@ -7,6 +7,7 @@ const env = require('../../../config/env');
 const cashfreeService = require('./cashfree.service');
 
 const orderRepository = require('../../orders/order.repository');
+const orderService = require('../../orders/order.service');
 
 const {
     fulfillPaidOrder,
@@ -314,7 +315,7 @@ async function handleCashfreeWebhook(
         }
 
         const updatedOrder =
-            await orderRepository.markOrderPaid(
+            await orderService.markOrderPaidWithCoupon(
                 orderId,
                 {
                     cashfreePaymentId:

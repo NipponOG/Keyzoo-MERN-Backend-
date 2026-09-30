@@ -88,7 +88,32 @@ async function updateById(id, update) {
     return result;
 }
 
-async function incrementUsage(id) {
+// async function incrementUsage(id) {
+//     const { ObjectId } = require('mongodb');
+
+//     if (!ObjectId.isValid(id)) {
+//         return null;
+//     }
+
+//     return getCollection().findOneAndUpdate(
+//         {
+//             _id: new ObjectId(id),
+//         },
+//         {
+//             $inc: {
+//                 usageCount: 1,
+//             },
+//             $set: {
+//                 updatedAt: new Date(),
+//             },
+//         },
+//         {
+//             returnDocument: 'after',
+//         }
+//     );
+// }
+
+async function incrementUsage(id, { session = null } = {}) {
     const { ObjectId } = require('mongodb');
 
     if (!ObjectId.isValid(id)) {
@@ -98,6 +123,30 @@ async function incrementUsage(id) {
     return getCollection().findOneAndUpdate(
         {
             _id: new ObjectId(id),
+
+            $or: [
+                {
+                    usageLimit: null,
+                },
+                {
+                    usageLimit: {
+                        $exists: false,
+                    },
+                },
+                {
+                    $expr: {
+                        $lt: [
+                            {
+                                $ifNull: [
+                                    '$usageCount',
+                                    0,
+                                ],
+                            },
+                            '$usageLimit',
+                        ],
+                    },
+                },
+            ],
         },
         {
             $inc: {
@@ -108,6 +157,11 @@ async function incrementUsage(id) {
             },
         },
         {
+            ...(session
+                ? {
+                    session,
+                }
+                : {}),
             returnDocument: 'after',
         }
     );
