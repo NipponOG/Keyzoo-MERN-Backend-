@@ -5,6 +5,8 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 
+const emailTestRoutes = require('./modules/email/email.test.routes');
+
 const heroBannerRoutes = require('./modules/hero-banners/hero-banner.routes');
 const gameBannerRoutes = require('./modules/game-banners/game-banner.routes');
 const promoBannerRoutes = require('./modules/promo-banners/promo-banner.routes');
@@ -93,9 +95,11 @@ app.use('/api/v1/maintenance', maintenanceRoutes);
 // Maintenance protected
 // ─────────────────────────────────────────────
 
+app.use('/api/v1/email',emailTestRoutes);
+
 app.use('/api/v1/search', maintenanceMiddleware, searchRoutes);
 app.use('/api/v1/newsletter', maintenanceMiddleware, newsletterRoutes);
-app.use('/api/v1/orders', orderRoutes);
+app.use('/api/v1/orders', maintenanceMiddleware, orderRoutes);
 app.use('/api/v1/products', maintenanceMiddleware, productRoutes);
 app.use('/api/v1/gift-cards', maintenanceMiddleware, giftCardRoutes);
 app.use('/api/v1/game-keys', maintenanceMiddleware, gameKeyRoutes);

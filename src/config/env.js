@@ -25,6 +25,11 @@ const env = {
         clientSecret: process.env.DISCORD_CLIENT_SECRET,
     },
 
+    resend: {
+        apiKey: process.env.RESEND_API_KEY,
+        fromEmail: process.env.RESEND_FROM_EMAIL,
+    },
+
     strapi: {
         url: process.env.STRAPI_URL,
         token: process.env.STRAPI_TOKEN,
@@ -64,6 +69,12 @@ if (!env.google.clientId || !env.google.clientSecret) {
 if (!env.discord.clientId || !env.discord.clientSecret) {
     throw new Error(
         'DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET are not defined'
+    );
+}
+
+if (!env.resend.apiKey || !env.resend.fromEmail) {
+    throw new Error(
+        'RESEND_API_KEY and RESEND_FROM_EMAIL are not defined'
     );
 }
 
