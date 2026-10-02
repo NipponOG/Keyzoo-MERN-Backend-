@@ -24,7 +24,8 @@ function createUserDocument(data = {}) {
         role: data.role ?? 'customer',
         provider: data.provider ?? 'local',
 
-        googleId: data.googleId ?? null,
+        // googleId: data.googleId ?? null,
+        ...(data.googleId ? { googleId: data.googleId } : {}),
         profileImage: data.profileImage ?? null,
 
         isEmailVerified: data.isEmailVerified ?? false,

@@ -1,0 +1,57 @@
+'use strict';
+
+const express = require('express');
+
+const {
+    sendEmail,
+} = require('../../services/email.service');
+
+const {
+    buildPasswordChangedEmail,
+} = require('../../services/auth.email.templates');
+
+const router = express.Router();
+
+router.post('/password-changed-test', async (req, res, next) => {
+    try {
+        const {
+            to,
+            name = 'Nippan',
+        } = req.body;
+
+        if (!to) {
+            const error = new Error(
+                'Recipient email is required.'
+            );
+
+            error.statusCode = 400;
+            throw error;
+        }
+
+        const html = buildPasswordChangedEmail({
+            name,
+            email: to,
+            changedAt: new Date().toLocaleString('en-IN', {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+            }),
+            frontendUrl: 'https://keyzoo.shop',
+        });
+
+        const result = await sendEmail({
+            to,
+            subject: 'Your Keyzoo Password Was Changed',
+            html,
+        });
+
+        res.status(200).json({
+            success: true,
+            message: 'Password changed notification sent successfully.',
+            emailId: result?.id ?? null,
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+module.exports = router;

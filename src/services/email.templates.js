@@ -7,6 +7,7 @@ function buildOrderDeliveryEmail({
     subtotalAmount = null,
     discountAmount = 0,
     totalAmount,
+    feeAmount = 0,
     currency = 'INR',
     paymentMethod = null,
     orderDate = null,
@@ -770,30 +771,54 @@ function buildOrderDeliveryEmail({
                                                 </td>
                                             </tr>
 
-                                            ${resolvedDiscount > 0
-            ? `
-                                                        <tr>
-                                                            <td style="
-                                                                padding:6px 0;
-                                                                color:#77727f;
-                                                            ">
-                                                                Coupon Discount
-                                                            </td>
+                                            ${Number(feeAmount) > 0
+                                                        ? `
+                                                    <tr>
+                                                        <td style="
+                                                            padding:6px 0;
+                                                            color:#77727f;
+                                                        ">
+                                                            Fee
+                                                        </td>
 
-                                                            <td
-                                                                align="right"
-                                                                style="
-                                                                    padding:6px 0;
-                                                                    color:#16a34a;
-                                                                    font-weight:600;
-                                                                "
-                                                            >
-                                                                -${formatMoney(resolvedDiscount, currency)}
-                                                            </td>
-                                                        </tr>
-                                                    `
-            : ''
-        }
+                                                        <td
+                                                            align="right"
+                                                            style="
+                                                                padding:6px 0;
+                                                                color:#33303a;
+                                                            "
+                                                        >
+                                                            ${formatMoney(feeAmount, currency)}
+                                                        </td>
+                                                    </tr>
+                                                `
+                                                        : ''
+                                                    }
+
+                                            ${resolvedDiscount > 0
+                                                        ? `
+                                                    <tr>
+                                                        <td style="
+                                                            padding:6px 0;
+                                                            color:#77727f;
+                                                        ">
+                                                            Discount
+                                                        </td>
+
+                                                        <td
+                                                            align="right"
+                                                            style="
+                                                                padding:6px 0;
+                                                                color:#16a34a;
+                                                                font-weight:600;
+                                                            "
+                                                        >
+                                                            -${formatMoney(resolvedDiscount, currency)}
+                                                        </td>
+                                                    </tr>
+                                                `
+                                                        : ''
+                                                    }
 
                                             <tr>
                                                 <td
@@ -954,6 +979,93 @@ function buildOrderDeliveryEmail({
                                         Team Keyzoo
                                     </div>
 
+                                    <!-- Social Icons -->
+
+                                    <table
+                                        cellpadding="0"
+                                        cellspacing="0"
+                                        style="margin-top:14px;"
+                                    >
+                                        <tr>
+
+                                            <td style="padding:0 5px;">
+                                                <img
+                                                    src="https://res.cloudinary.com/dblttl9bh/image/upload/v1790918876/keyzoo/products/gallery/p6z9khzaqp55fte2w7sc.svg"
+                                                    alt="Social"
+                                                    width="20"
+                                                    height="20"
+                                                    style="
+                                                        display:block;
+                                                        width:20px;
+                                                        height:20px;
+                                                        border:0;
+                                                    "
+                                                />
+                                            </td>
+
+                                            <td style="padding:0 5px;">
+                                                <img
+                                                    src="https://res.cloudinary.com/dblttl9bh/image/upload/v1790918878/keyzoo/products/gallery/fmyqf2zrvm0tfkrrklfk.svg"
+                                                    alt="Social"
+                                                    width="20"
+                                                    height="20"
+                                                    style="
+                                                        display:block;
+                                                        width:20px;
+                                                        height:20px;
+                                                        border:0;
+                                                    "
+                                                />
+                                            </td>
+
+                                            <td style="padding:0 5px;">
+                                                <img
+                                                    src="https://res.cloudinary.com/dblttl9bh/image/upload/v1790918880/keyzoo/products/gallery/ssijafrjuqfl9e8lh9p1.svg"
+                                                    alt="Social"
+                                                    width="20"
+                                                    height="20"
+                                                    style="
+                                                        display:block;
+                                                        width:20px;
+                                                        height:20px;
+                                                        border:0;
+                                                    "
+                                                />
+                                            </td>
+
+                                            <td style="padding:0 5px;">
+                                                <img
+                                                    src="https://res.cloudinary.com/dblttl9bh/image/upload/v1790918881/keyzoo/products/gallery/yxbmic2pkquqvcqqefgh.svg"
+                                                    alt="Social"
+                                                    width="20"
+                                                    height="20"
+                                                    style="
+                                                        display:block;
+                                                        width:20px;
+                                                        height:20px;
+                                                        border:0;
+                                                    "
+                                                />
+                                            </td>
+
+                                            <td style="padding:0 5px;">
+                                                <img
+                                                    src="https://res.cloudinary.com/dblttl9bh/image/upload/v1790918883/keyzoo/products/gallery/vvbcvxexz6eoy69vriht.svg"
+                                                    alt="Social"
+                                                    width="20"
+                                                    height="20"
+                                                    style="
+                                                        display:block;
+                                                        width:20px;
+                                                        height:20px;
+                                                        border:0;
+                                                    "
+                                                />
+                                            </td>
+
+                                        </tr>
+                                    </table>
+
                                 </td>
                             </tr>
 
@@ -965,8 +1077,8 @@ function buildOrderDeliveryEmail({
                             max-width:620px;
                             padding:16px 20px 0 20px;
                             color:#aaa6af;
-                            font-size:10px;
-                            line-height:16px;
+                            font-size:11px;
+                            line-height:18px;
                             text-align:center;
                         ">
                             This is an automated delivery email from Keyzoo.

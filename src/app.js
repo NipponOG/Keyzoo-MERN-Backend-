@@ -5,6 +5,11 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 
+const welcomeEmailTestRoutes = require('./modules/email/welcome.email.test.routes');
+const verificationEmailTestRoutes = require('./modules/email/verification.email.test.routes');
+const otpEmailTestRoutes = require('./modules/email/otp.email.test.routes');
+const passwordResetEmailTestRoutes = require('./modules/email/password-reset.email.test.routes');
+const passwordChangedEmailTestRoutes = require('./modules/email/password-changed.email.test.routes');
 const emailTestRoutes = require('./modules/email/email.test.routes');
 
 const heroBannerRoutes = require('./modules/hero-banners/hero-banner.routes');
@@ -95,7 +100,12 @@ app.use('/api/v1/maintenance', maintenanceRoutes);
 // Maintenance protected
 // ─────────────────────────────────────────────
 
-app.use('/api/v1/email',emailTestRoutes);
+app.use('/api/v1/email', welcomeEmailTestRoutes);
+app.use('/api/v1/email', verificationEmailTestRoutes);
+app.use('/api/v1/email', otpEmailTestRoutes);
+app.use('/api/v1/email', passwordResetEmailTestRoutes);
+app.use('/api/v1/email', passwordChangedEmailTestRoutes);
+app.use('/api/v1/email', emailTestRoutes);
 
 app.use('/api/v1/search', maintenanceMiddleware, searchRoutes);
 app.use('/api/v1/newsletter', maintenanceMiddleware, newsletterRoutes);

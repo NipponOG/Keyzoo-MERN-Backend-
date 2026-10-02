@@ -6,6 +6,9 @@ const jwt = require('jsonwebtoken');
 const repository = require('./auth.repository');
 const { consumeHandoffCode, } = require('./oauth-handoff.service');
 
+const { sendEmail, } = require('../../services/email.service');
+const { buildWelcomeEmail, } = require('../../services/auth.email.templates');
+
 const JWT_SECRET = process.env.JWT_SECRET;
 
 if (!JWT_SECRET) {
@@ -77,6 +80,27 @@ async function registerUser({
         isBlocked: false,
         twoFactorEnabled: false,
     });
+
+    try {
+        const html = buildWelcomeEmail({
+            name: firstName.trim(),
+            email: normalizedEmail,
+            frontendUrl:
+                process.env.FRONTEND_URL ||
+                'http://localhost:3000',
+        });
+
+        await sendEmail({
+            to: normalizedEmail,
+            subject: 'Welcome to Keyzoo 🎮',
+            html,
+        });
+    } catch (emailError) {
+        console.error(
+            '⚠️ Welcome email could not be sent:',
+            emailError
+        );
+    }
 
     return {
         jwt: createToken(user),

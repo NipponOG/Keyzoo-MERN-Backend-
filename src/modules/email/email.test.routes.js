@@ -30,8 +30,9 @@ router.post('/test', async (req, res, next) => {
             deliveryEmail: to,
 
             subtotalAmount: 999,
-            discountAmount: 0,
-            totalAmount: 999,
+            feeAmount: 20,
+            discountAmount: 100,
+            totalAmount: 919,
 
             currency: 'INR',
             paymentMethod: 'Stripe',
