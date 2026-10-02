@@ -50,6 +50,163 @@ async function create(userData) {
     };
 }
 
+async function setEmailVerificationToken(
+    userId,
+    tokenHash,
+    expiresAt
+) {
+    if (!ObjectId.isValid(userId)) {
+        return null;
+    }
+
+    return getCollection().findOneAndUpdate(
+        {
+            _id: new ObjectId(userId),
+        },
+        {
+            $set: {
+                emailVerificationTokenHash: tokenHash,
+                emailVerificationTokenExpiresAt: expiresAt,
+                updatedAt: new Date(),
+            },
+        },
+        {
+            returnDocument: 'after',
+        }
+    );
+}
+
+async function findByEmailVerificationTokenHash(tokenHash) {
+    if (!tokenHash) {
+        return null;
+    }
+
+    return getCollection().findOne({
+        emailVerificationTokenHash: tokenHash,
+        emailVerificationTokenExpiresAt: {
+            $gt: new Date(),
+        },
+        isEmailVerified: false,
+    });
+}
+
+async function markEmailVerified(userId) {
+    if (!ObjectId.isValid(userId)) {
+        return null;
+    }
+
+    return getCollection().findOneAndUpdate(
+        {
+            _id: new ObjectId(userId),
+            isEmailVerified: false,
+        },
+        {
+            $set: {
+                isEmailVerified: true,
+                updatedAt: new Date(),
+            },
+            $unset: {
+                emailVerificationTokenHash: '',
+                emailVerificationTokenExpiresAt: '',
+            },
+        },
+        {
+            returnDocument: 'after',
+        }
+    );
+}
+
+async function setPasswordResetToken(
+    userId,
+    tokenHash,
+    expiresAt
+) {
+    if (!ObjectId.isValid(userId)) {
+        return null;
+    }
+
+    return getCollection().findOneAndUpdate(
+        {
+            _id: new ObjectId(userId),
+        },
+        {
+            $set: {
+                passwordResetTokenHash: tokenHash,
+                passwordResetTokenExpiresAt: expiresAt,
+                updatedAt: new Date(),
+            },
+        },
+        {
+            returnDocument: 'after',
+        }
+    );
+}
+
+async function findByPasswordResetTokenHash(tokenHash) {
+    if (!tokenHash) {
+        return null;
+    }
+
+    return getCollection().findOne({
+        passwordResetTokenHash: tokenHash,
+        passwordResetTokenExpiresAt: {
+            $gt: new Date(),
+        },
+    });
+}
+
+async function clearPasswordResetToken(userId) {
+    if (!ObjectId.isValid(userId)) {
+        return null;
+    }
+
+    return getCollection().findOneAndUpdate(
+        {
+            _id: new ObjectId(userId),
+        },
+        {
+            $unset: {
+                passwordResetTokenHash: '',
+                passwordResetTokenExpiresAt: '',
+            },
+            $set: {
+                updatedAt: new Date(),
+            },
+        },
+        {
+            returnDocument: 'after',
+        }
+    );
+}
+
+async function updatePasswordAndClearResetToken(
+    userId,
+    passwordHash
+) {
+    if (!ObjectId.isValid(userId)) {
+        return null;
+    }
+
+    return getCollection().findOneAndUpdate(
+        {
+            _id: new ObjectId(userId),
+        },
+        {
+            $set: {
+                passwordHash,
+                updatedAt: new Date(),
+            },
+            $unset: {
+                passwordResetTokenHash: '',
+                passwordResetTokenExpiresAt: '',
+            },
+        },
+        {
+            returnDocument: 'after',
+        }
+    );
+}
+
 async function ensureIndexes() {
     await getCollection().createIndex(
         { email: 1 },
@@ -58,6 +215,22 @@ async function ensureIndexes() {
 
     await getCollection().createIndex(
         { googleId: 1 },
+        {
+            unique: true,
+            sparse: true,
+        }
+    );
+
+    await getCollection().createIndex(
+        { emailVerificationTokenHash: 1 },
+        {
+            unique: true,
+            sparse: true,
+        }
+    );
+
+    await getCollection().createIndex(
+        { passwordResetTokenHash: 1 },
         {
             unique: true,
             sparse: true,
@@ -72,4 +245,11 @@ module.exports = {
     ensureIndexes,
     findByGoogleId,
     findByProviderId,
+    setEmailVerificationToken,
+    findByEmailVerificationTokenHash,
+    markEmailVerified,
+    setPasswordResetToken,
+    findByPasswordResetTokenHash,
+    clearPasswordResetToken,
+    updatePasswordAndClearResetToken,
 };

@@ -1,5 +1,6 @@
 'use strict';
 
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -7,7 +8,7 @@ const repository = require('./auth.repository');
 const { consumeHandoffCode, } = require('./oauth-handoff.service');
 
 const { sendEmail, } = require('../../services/email.service');
-const { buildWelcomeEmail, } = require('../../services/auth.email.templates');
+const { buildWelcomeEmail, buildVerificationEmail, buildPasswordResetEmail, buildPasswordChangedEmail } = require('../../services/auth.email.templates');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -81,13 +82,45 @@ async function registerUser({
         twoFactorEnabled: false,
     });
 
+    /*
+ * Generate email verification token.
+ * Only the hash is stored in MongoDB.
+ */
+    const verificationToken =
+        crypto.randomBytes(32).toString('hex');
+
+    const verificationTokenHash =
+        crypto
+            .createHash('sha256')
+            .update(verificationToken)
+            .digest('hex');
+
+    const verificationTokenExpiresAt =
+        new Date(Date.now() + 30 * 60 * 1000);
+
+    await repository.setEmailVerificationToken(
+        user._id.toString(),
+        verificationTokenHash,
+        verificationTokenExpiresAt
+    );
+
+    const frontendUrl =
+        process.env.FRONTEND_URL ||
+        'http://localhost:3000';
+
+    const verificationUrl =
+        `${frontendUrl}/verify-email?token=${encodeURIComponent(
+            verificationToken
+        )}`;
+
+    /*
+     * Send welcome email.
+     */
     try {
         const html = buildWelcomeEmail({
             name: firstName.trim(),
             email: normalizedEmail,
-            frontendUrl:
-                process.env.FRONTEND_URL ||
-                'http://localhost:3000',
+            frontendUrl,
         });
 
         await sendEmail({
@@ -102,9 +135,196 @@ async function registerUser({
         );
     }
 
+    /*
+     * Send email verification email.
+     */
+    try {
+        const html = buildVerificationEmail({
+            name: firstName.trim(),
+            email: normalizedEmail,
+            verificationUrl,
+            expiresIn: '30 minutes',
+        });
+
+        await sendEmail({
+            to: normalizedEmail,
+            subject: 'Verify Your Keyzoo Email Address',
+            html,
+        });
+    } catch (emailError) {
+        console.error(
+            '⚠️ Verification email could not be sent:',
+            emailError
+        );
+    }
+
     return {
         jwt: createToken(user),
         user: sanitizeUser(user),
+    };
+}
+
+async function requestPasswordReset(email) {
+    if (!email || typeof email !== 'string') {
+        const error = new Error(
+            'Email address is required'
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const normalizedEmail =
+        email.trim().toLowerCase();
+
+    const user =
+        await repository.findByEmail(normalizedEmail);
+
+    /*
+     * Do not reveal whether an email exists.
+     */
+    if (!user) {
+        return;
+    }
+
+    const resetToken =
+        crypto.randomBytes(32).toString('hex');
+
+    const resetTokenHash =
+        crypto
+            .createHash('sha256')
+            .update(resetToken)
+            .digest('hex');
+
+    const resetTokenExpiresAt =
+        new Date(Date.now() + 30 * 60 * 1000);
+
+    await repository.setPasswordResetToken(
+        user._id.toString(),
+        resetTokenHash,
+        resetTokenExpiresAt
+    );
+
+    const frontendUrl =
+        process.env.FRONTEND_URL ||
+        'http://localhost:3000';
+
+    const resetUrl =
+        `${frontendUrl}/change-password?token=${encodeURIComponent(
+            resetToken
+        )}`;
+
+    try {
+        const html = buildPasswordResetEmail({
+            name: user.firstName || user.username || 'there',
+            email: user.email,
+            resetUrl,
+            expiresIn: '30 minutes',
+        });
+
+        await sendEmail({
+            to: user.email,
+            subject: 'Reset Your Keyzoo Password',
+            html,
+        });
+    } catch (emailError) {
+        console.error(
+            '⚠️ Password reset email could not be sent:',
+            emailError
+        );
+    }
+}
+
+async function resetPassword(token, password) {
+    if (!token || typeof token !== 'string') {
+        const error = new Error(
+            'Password reset token is required'
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    if (!password || typeof password !== 'string') {
+        const error = new Error(
+            'New password is required'
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    if (password.length < 8) {
+        const error = new Error(
+            'Password must be at least 8 characters long'
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const tokenHash = crypto
+        .createHash('sha256')
+        .update(token)
+        .digest('hex');
+
+    const user =
+        await repository.findByPasswordResetTokenHash(
+            tokenHash
+        );
+
+    if (!user) {
+        const error = new Error(
+            'Invalid or expired password reset link'
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const passwordHash = await bcrypt.hash(
+        password,
+        12
+    );
+
+    const updatedUser =
+        await repository.updatePasswordAndClearResetToken(
+            user._id.toString(),
+            passwordHash
+        );
+
+    if (!updatedUser) {
+        const error = new Error(
+            'Password reset could not be completed'
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    try {
+        const html = buildPasswordChangedEmail({
+            name:
+                updatedUser.firstName ||
+                updatedUser.username ||
+                'there',
+            email: updatedUser.email,
+        });
+
+        await sendEmail({
+            to: updatedUser.email,
+            subject: 'Your Keyzoo Password Was Changed',
+            html,
+        });
+    } catch (emailError) {
+        console.error(
+            '⚠️ Password changed email could not be sent:',
+            emailError
+        );
+    }
+
+    return {
+        message: 'Password reset successfully.',
     };
 }
 
@@ -154,6 +374,52 @@ async function loginUser({ email, password }) {
         jwt: token,
         user: sanitizeUser(user),
     };
+}
+
+async function verifyEmail(token) {
+    if (!token || typeof token !== 'string') {
+        const error = new Error(
+            'Email verification token is required'
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const tokenHash = crypto
+        .createHash('sha256')
+        .update(token)
+        .digest('hex');
+
+    const user =
+        await repository.findByEmailVerificationTokenHash(
+            tokenHash
+        );
+
+    if (!user) {
+        const error = new Error(
+            'Invalid or expired email verification link'
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const verifiedUser =
+        await repository.markEmailVerified(
+            user._id.toString()
+        );
+
+    if (!verifiedUser) {
+        const error = new Error(
+            'Email verification could not be completed'
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    return sanitizeUser(verifiedUser);
 }
 
 async function loginAdmin({ email, password }) {
@@ -470,7 +736,10 @@ async function exchangeOAuthHandoffCode(code) {
 
 module.exports = {
     registerUser,
+    requestPasswordReset,
+    resetPassword,
     loginUser,
+    verifyEmail,
     getCurrentUser,
     createToken,
     sanitizeUser,

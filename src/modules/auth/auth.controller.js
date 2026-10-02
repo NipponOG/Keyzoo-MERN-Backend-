@@ -84,6 +84,61 @@ async function login(req, res, next) {
     }
 }
 
+async function verifyEmail(req, res, next) {
+    try {
+        const { token } = req.query;
+
+        const user =
+            await authService.verifyEmail(token);
+
+        res.json({
+            success: true,
+            message: 'Email verified successfully.',
+            user,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+async function requestPasswordReset(req, res, next) {
+    try {
+        const { email } = req.body;
+
+        await authService.requestPasswordReset(email);
+
+        /*
+         * Always return the same response whether
+         * the email exists or not.
+         */
+        res.json({
+            success: true,
+            message:
+                'If an account exists with that email, a password reset link has been sent.',
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+async function resetPassword(req, res, next) {
+    try {
+        const { token, password } = req.body;
+
+        const result = await authService.resetPassword(
+            token,
+            password
+        );
+
+        res.json({
+            success: true,
+            message: result.message,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 async function getCurrentUser(req, res, next) {
     try {
         const user = await authService.getCurrentUser(
@@ -204,6 +259,9 @@ async function discordCallback(req, res, next) {
 module.exports = {
     register,
     login,
+    verifyEmail,
+    requestPasswordReset,
+    resetPassword,
     getCurrentUser,
     googleLogin,
     googleCallback,
