@@ -154,6 +154,34 @@ async function getCurrentUser(req, res, next) {
     }
 }
 
+async function updateCurrentUser(req, res, next) {
+    try {
+        const {
+            firstName,
+            lastName,
+            phone,
+        } = req.body;
+
+        const user =
+            await authService.updateCurrentUser(
+                req.user.userId,
+                {
+                    firstName,
+                    lastName,
+                    phone,
+                }
+            );
+
+        res.json({
+            success: true,
+            message: 'Profile updated successfully.',
+            user,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 function googleLogin(req, res) {
     const authorizationUrl = getGoogleAuthorizationUrl();
 
@@ -263,6 +291,7 @@ module.exports = {
     requestPasswordReset,
     resetPassword,
     getCurrentUser,
+    updateCurrentUser,
     googleLogin,
     googleCallback,
     discordLogin,

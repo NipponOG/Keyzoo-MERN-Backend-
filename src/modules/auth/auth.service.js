@@ -586,6 +586,94 @@ async function getCurrentUser(userId) {
     return sanitizeUser(user);
 }
 
+async function updateCurrentUser(
+    userId,
+    {
+        firstName,
+        lastName,
+        phone,
+    }
+) {
+    if (!userId) {
+        const error = new Error('User ID is required');
+        error.statusCode = 401;
+        throw error;
+    }
+
+    if (
+        typeof firstName !== 'string' ||
+        !firstName.trim()
+    ) {
+        const error = new Error('First name is required');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    if (
+        typeof lastName !== 'string' ||
+        !lastName.trim()
+    ) {
+        const error = new Error('Last name is required');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    if (
+        typeof phone !== 'string' ||
+        !phone.trim()
+    ) {
+        const error = new Error('Phone number is required');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const normalizedPhone = phone
+        .replace(/\D/g, '');
+
+    if (!/^[6-9]\d{9}$/.test(normalizedPhone)) {
+        const error = new Error(
+            'Please enter a valid 10-digit Indian phone number.'
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const existingUser =
+        await repository.findById(userId);
+
+    if (!existingUser) {
+        const error = new Error('User not found');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    if (existingUser.isBlocked) {
+        const error = new Error('Your account has been blocked');
+        error.statusCode = 403;
+        throw error;
+    }
+
+    const updatedUser =
+        await repository.updateProfile(
+            userId,
+            {
+                firstName: firstName.trim(),
+                lastName: lastName.trim(),
+                phone: normalizedPhone,
+            }
+        );
+
+    if (!updatedUser) {
+        const error = new Error(
+            'Profile could not be updated'
+        );
+        error.statusCode = 500;
+        throw error;
+    }
+
+    return sanitizeUser(updatedUser);
+}
+
 function createToken(user) {
     return jwt.sign(
         {
@@ -604,6 +692,7 @@ function sanitizeUser(user) {
         id: user._id.toString(),
         username: user.username,
         email: user.email,
+        phone: user.phone,
         firstName: user.firstName,
         lastName: user.lastName,
         dateOfBirth: user.dateOfBirth,
@@ -741,6 +830,7 @@ module.exports = {
     loginUser,
     verifyEmail,
     getCurrentUser,
+    updateCurrentUser,
     createToken,
     sanitizeUser,
     loginWithGoogle,

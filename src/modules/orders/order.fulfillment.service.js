@@ -7,6 +7,14 @@ const {
 const orderRepository =
     require('./order.repository');
 
+const {
+    sendEmail,
+} = require('../../services/email.service');
+
+const {
+    buildOrderDeliveryEmail,
+} = require('../../services/email.templates');
+
 const gameKeyRepository =
     require('../game-keys/game-key.repository');
 
@@ -215,6 +223,112 @@ async function fulfillPaidOrder(
                 }
             }
         );
+
+        /*
+ * Send the transactional delivery email only after
+ * the fulfillment transaction has committed successfully.
+ *
+ * Email failure must NOT roll back fulfillment because
+ * the keys have already been securely assigned.
+ */
+        try {
+            const emailItems =
+                order.cartSnapshot.map((item) => {
+                    const itemKeys =
+                        assignedKeys
+                            .filter(
+                                (assignedKey) =>
+                                    String(
+                                        assignedKey.itemId
+                                    ) ===
+                                    String(item.id) &&
+                                    assignedKey.itemType ===
+                                    item.type
+                            )
+                            .map(
+                                (assignedKey) =>
+                                    assignedKey.code
+                            );
+
+                    return {
+                        ...item,
+                        keys: itemKeys,
+                    };
+                });
+
+            const frontendUrl =
+                process.env.FRONTEND_URL ||
+                'http://localhost:3000';
+
+            const html =
+                buildOrderDeliveryEmail({
+                    orderNumber:
+                        order.orderNumber,
+
+                    deliveryEmail:
+                        order.deliveryEmail,
+
+                    items: emailItems,
+
+                    subtotalAmount:
+                        order.subtotalAmount,
+
+                    discountAmount:
+                        order.discountAmount || 0,
+
+                    totalAmount:
+                        order.totalAmount,
+
+                    feeAmount:
+                        order.feeAmount || 0,
+
+                    currency:
+                        order.currency || 'INR',
+
+                    paymentMethod:
+                        order.paymentMethod,
+
+                    orderDate:
+                        order.createdAt,
+
+                    frontendUrl,
+
+                    orderId:
+                        order._id?.toString(),
+                });
+
+            await sendEmail({
+                to: order.deliveryEmail,
+
+                subject:
+                    `Your Keyzoo Order ${order.orderNumber} Is Ready 🎮`,
+
+                html,
+            });
+
+            console.log(
+                '📧 Order delivery email sent successfully:',
+                {
+                    orderNumber,
+                    deliveryEmail:
+                        order.deliveryEmail,
+                }
+            );
+        } catch (emailError) {
+            /*
+             * The order is already fulfilled.
+             * Never convert a successful fulfillment into
+             * manual delivery just because email failed.
+             */
+            console.error(
+                '⚠️ Order was fulfilled, but delivery email could not be sent:',
+                {
+                    orderNumber,
+                    error:
+                        emailError.message,
+                }
+            );
+        }
 
         console.log(
             '✅ Order keys assigned successfully:',

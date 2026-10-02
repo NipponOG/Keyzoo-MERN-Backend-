@@ -14,6 +14,7 @@ router.post('/forgot-password', controller.requestPasswordReset);
 router.post('/reset-password', controller.resetPassword);
 
 router.get('/me', requireAuth, controller.getCurrentUser);
+router.patch('/me', requireAuth, controller.updateCurrentUser);
 
 router.get('/google', controller.googleLogin);
 router.get('/google/callback', controller.googleCallback);

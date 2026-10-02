@@ -28,8 +28,8 @@ function buildOrderDeliveryEmail({
         Number(discountAmount) || 0;
 
     const orderUrl =
-        frontendUrl && orderId
-            ? `${frontendUrl.replace(/\/$/, '')}/orders/${encodeURIComponent(orderId)}`
+        frontendUrl && orderNumber
+            ? `${frontendUrl.replace(/\/$/, '')}/orders/${encodeURIComponent(orderNumber)}`
             : null;
 
     const itemRows = items

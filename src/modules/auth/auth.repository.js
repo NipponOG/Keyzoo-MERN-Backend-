@@ -39,6 +39,37 @@ async function findById(id) {
     });
 }
 
+async function updateProfile(
+    userId,
+    {
+        firstName,
+        lastName,
+        phone,
+    }
+) {
+    if (!ObjectId.isValid(userId)) {
+        return null;
+    }
+
+    return getCollection().findOneAndUpdate(
+        {
+            _id: new ObjectId(userId),
+        },
+        {
+            $set: {
+                firstName,
+                lastName,
+                phone,
+                username: `${firstName} ${lastName}`.trim(),
+                updatedAt: new Date(),
+            },
+        },
+        {
+            returnDocument: 'after',
+        }
+    );
+}
+
 async function create(userData) {
     const document = createUserDocument(userData);
 
@@ -241,6 +272,7 @@ async function ensureIndexes() {
 module.exports = {
     findByEmail,
     findById,
+    updateProfile,
     create,
     ensureIndexes,
     findByGoogleId,
