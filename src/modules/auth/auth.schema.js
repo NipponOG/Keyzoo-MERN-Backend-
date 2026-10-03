@@ -32,6 +32,8 @@ function createUserDocument(data = {}) {
         isBlocked: data.isBlocked ?? false,
 
         twoFactorEnabled: data.twoFactorEnabled ?? false,
+        twoFactorSecret: data.twoFactorSecret ?? null,
+        twoFactorRecoveryCodes: data.twoFactorRecoveryCodes ?? [],
 
         createdAt: data.createdAt ?? now,
         updatedAt: now,

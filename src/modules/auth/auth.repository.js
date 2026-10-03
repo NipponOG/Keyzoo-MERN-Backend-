@@ -70,6 +70,130 @@ async function updateProfile(
     );
 }
 
+async function updateTwoFactorSecret(
+    userId,
+    {
+        twoFactorSecret,
+        twoFactorEnabled,
+    }
+) {
+    if (!ObjectId.isValid(userId)) {
+        return null;
+    }
+
+    return getCollection().findOneAndUpdate(
+        {
+            _id: new ObjectId(userId),
+        },
+        {
+            $set: {
+                twoFactorSecret,
+                twoFactorEnabled,
+                updatedAt: new Date(),
+            },
+        },
+        {
+            returnDocument: 'after',
+        }
+    );
+}
+
+async function clearTwoFactorSecret(userId) {
+    if (!ObjectId.isValid(userId)) {
+        return null;
+    }
+
+    return getCollection().findOneAndUpdate(
+        {
+            _id: new ObjectId(userId),
+        },
+        {
+            $set: {
+                twoFactorSecret: null,
+                twoFactorEnabled: false,
+                twoFactorRecoveryCodes: [],
+                updatedAt: new Date(),
+            },
+        },
+        {
+            returnDocument: 'after',
+        }
+    );
+}
+
+async function updateTwoFactorRecoveryCodes(
+    userId,
+    twoFactorRecoveryCodes
+) {
+    if (!ObjectId.isValid(userId)) {
+        return null;
+    }
+
+    return getCollection().findOneAndUpdate(
+        {
+            _id: new ObjectId(userId),
+        },
+        {
+            $set: {
+                twoFactorRecoveryCodes,
+                updatedAt: new Date(),
+            },
+        },
+        {
+            returnDocument: 'after',
+        }
+    );
+}
+
+async function clearTwoFactorRecoveryCodes(userId) {
+    if (!ObjectId.isValid(userId)) {
+        return null;
+    }
+
+    return getCollection().findOneAndUpdate(
+        {
+            _id: new ObjectId(userId),
+        },
+        {
+            $set: {
+                twoFactorRecoveryCodes: [],
+                updatedAt: new Date(),
+            },
+        },
+        {
+            returnDocument: 'after',
+        }
+    );
+}
+
+async function consumeTwoFactorRecoveryCode(
+    userId,
+    recoveryCodeHash
+) {
+    if (!ObjectId.isValid(userId)) {
+        return null;
+    }
+
+    return getCollection().findOneAndUpdate(
+        {
+            _id: new ObjectId(userId),
+            twoFactorEnabled: true,
+            twoFactorRecoveryCodes: recoveryCodeHash,
+        },
+        {
+            $pull: {
+                twoFactorRecoveryCodes: recoveryCodeHash,
+            },
+            $set: {
+                updatedAt: new Date(),
+            },
+        },
+        {
+            returnDocument: 'after',
+        }
+    );
+}
+
 async function create(userData) {
     const document = createUserDocument(userData);
 
@@ -284,4 +408,9 @@ module.exports = {
     findByPasswordResetTokenHash,
     clearPasswordResetToken,
     updatePasswordAndClearResetToken,
+    updateTwoFactorSecret,
+    clearTwoFactorSecret,
+    updateTwoFactorRecoveryCodes,
+    clearTwoFactorRecoveryCodes,
+    consumeTwoFactorRecoveryCode,
 };

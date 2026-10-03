@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 
 const repository = require('./auth.repository');
 const { consumeHandoffCode, } = require('./oauth-handoff.service');
+const { createMfaSetup, verifyMfaCode, } = require('../../utils/mfa');
 
 const { sendEmail, } = require('../../services/email.service');
 const { buildWelcomeEmail, buildVerificationEmail, buildPasswordResetEmail, buildPasswordChangedEmail } = require('../../services/auth.email.templates');
@@ -17,6 +18,45 @@ if (!JWT_SECRET) {
 }
 
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const MFA_CHALLENGE_EXPIRES_IN = '5m';
+
+function generateRecoveryCode() {
+    const partOne = crypto
+        .randomBytes(4)
+        .toString('hex')
+        .toUpperCase();
+
+    const partTwo = crypto
+        .randomBytes(4)
+        .toString('hex')
+        .toUpperCase();
+
+    return `KZ-${partOne}-${partTwo}`;
+}
+
+function hashRecoveryCode(code) {
+    return crypto
+        .createHash('sha256')
+        .update(code)
+        .digest('hex');
+}
+
+function generateRecoveryCodes(count = 10) {
+    const codes = [];
+    const hashes = [];
+
+    for (let index = 0; index < count; index += 1) {
+        const code = generateRecoveryCode();
+
+        codes.push(code);
+        hashes.push(hashRecoveryCode(code));
+    }
+
+    return {
+        codes,
+        hashes,
+    };
+}
 
 async function registerUser({
     firstName,
@@ -363,9 +403,19 @@ async function loginUser({ email, password }) {
     );
 
     if (!passwordMatches) {
-        const error = new Error('Invalid email or password');
+        const error = new Error(
+            'Invalid email or password'
+        );
         error.statusCode = 401;
         throw error;
+    }
+
+    if (user.twoFactorEnabled) {
+        return {
+            requiresTwoFactor: true,
+            challengeToken:
+                createMfaChallengeToken(user),
+        };
     }
 
     const token = createToken(user);
@@ -674,6 +724,145 @@ async function updateCurrentUser(
     return sanitizeUser(updatedUser);
 }
 
+function createMfaChallengeToken(user) {
+    return jwt.sign(
+        {
+            userId: user._id.toString(),
+            type: 'mfa-challenge',
+        },
+        JWT_SECRET,
+        {
+            expiresIn: MFA_CHALLENGE_EXPIRES_IN,
+        }
+    );
+}
+
+async function verifyMfaChallenge(
+    challengeToken,
+    code
+) {
+    if (
+        typeof challengeToken !== 'string' ||
+        !challengeToken.trim()
+    ) {
+        const error = new Error(
+            'MFA challenge token is required.'
+        );
+        error.statusCode = 401;
+        throw error;
+    }
+
+    if (
+        typeof code !== 'string' ||
+        !code.trim()
+    ) {
+        const error = new Error(
+            'Two-factor authentication code is required.'
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    let payload;
+
+    try {
+        payload = jwt.verify(
+            challengeToken.trim(),
+            JWT_SECRET
+        );
+    } catch (error) {
+        const authError = new Error(
+            'MFA challenge has expired or is invalid.'
+        );
+        authError.statusCode = 401;
+        throw authError;
+    }
+
+    if (
+        payload?.type !== 'mfa-challenge' ||
+        !payload?.userId
+    ) {
+        const error = new Error(
+            'Invalid MFA challenge.'
+        );
+        error.statusCode = 401;
+        throw error;
+    }
+
+    const user =
+        await repository.findById(payload.userId);
+
+    if (!user) {
+        const error = new Error(
+            'User not found.'
+        );
+        error.statusCode = 404;
+        throw error;
+    }
+
+    if (user.isBlocked) {
+        const error = new Error(
+            'Your account is blocked.'
+        );
+        error.statusCode = 403;
+        throw error;
+    }
+
+    if (!user.twoFactorEnabled) {
+        const error = new Error(
+            'Two-factor authentication is not enabled.'
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const normalizedCode = code.trim();
+
+    let verified = false;
+
+    if (/^\d{6}$/.test(normalizedCode)) {
+        verified = verifyMfaCode({
+            secret: user.twoFactorSecret,
+            email: user.email,
+            code: normalizedCode,
+        });
+    } else if (
+        /^KZ-[A-F0-9]{8}-[A-F0-9]{8}$/.test(
+            normalizedCode.toUpperCase()
+        )
+    ) {
+        const recoveryCodeHash =
+            hashRecoveryCode(
+                normalizedCode.toUpperCase()
+            );
+
+        const consumedUser =
+            await repository.consumeTwoFactorRecoveryCode(
+                user._id.toString(),
+                recoveryCodeHash
+            );
+
+        if (consumedUser) {
+            verified = true;
+        }
+    }
+
+    if (!verified) {
+        const error = new Error(
+            'Invalid two-factor authentication code.'
+        );
+        error.statusCode = 401;
+        throw error;
+    }
+
+    const token = createToken(user);
+
+    return {
+        jwt: token,
+        user: sanitizeUser(user),
+    };
+}
+
 function createToken(user) {
     return jwt.sign(
         {
@@ -823,6 +1012,281 @@ async function exchangeOAuthHandoffCode(code) {
     };
 }
 
+async function startTwoFactorSetup(userId) {
+    if (!userId) {
+        const error = new Error('User ID is required');
+        error.statusCode = 401;
+        throw error;
+    }
+
+    const user = await repository.findById(userId);
+
+    if (!user) {
+        const error = new Error('User not found');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    if (user.isBlocked) {
+        const error = new Error('Your account has been blocked');
+        error.statusCode = 403;
+        throw error;
+    }
+
+    if (user.twoFactorEnabled) {
+        const error = new Error(
+            'Two-factor authentication is already enabled.'
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const setup = createMfaSetup(user.email);
+
+    await repository.updateTwoFactorSecret(
+        userId,
+        {
+            twoFactorSecret: setup.secret,
+            twoFactorEnabled: false,
+        }
+    );
+
+    return {
+        otpauthUrl: setup.otpauthUrl,
+    };
+}
+
+async function enableTwoFactor(userId, code) {
+    if (!userId) {
+        const error = new Error('User ID is required');
+        error.statusCode = 401;
+        throw error;
+    }
+
+    const user = await repository.findById(userId);
+
+    if (!user) {
+        const error = new Error('User not found');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    if (user.isBlocked) {
+        const error = new Error('Your account has been blocked');
+        error.statusCode = 403;
+        throw error;
+    }
+
+    if (user.twoFactorEnabled) {
+        const error = new Error(
+            'Two-factor authentication is already enabled.'
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    if (!user.twoFactorSecret) {
+        const error = new Error(
+            'MFA setup has not been started.'
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const valid = verifyMfaCode({
+        secret: user.twoFactorSecret,
+        email: user.email,
+        code,
+    });
+
+    if (!valid) {
+        const error = new Error(
+            'Invalid authentication code.'
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const {
+        codes: recoveryCodes,
+        hashes: recoveryCodeHashes,
+    } = generateRecoveryCodes();
+
+    await repository.updateTwoFactorRecoveryCodes(
+        userId,
+        recoveryCodeHashes
+    );
+
+    const updatedUser =
+        await repository.updateTwoFactorSecret(
+            userId,
+            {
+                twoFactorSecret: user.twoFactorSecret,
+                twoFactorEnabled: true,
+            }
+        );
+
+    if (!updatedUser) {
+        const error = new Error(
+            'Failed to enable two-factor authentication.'
+        );
+        error.statusCode = 500;
+        throw error;
+    }
+
+    return {
+        user: sanitizeUser(updatedUser),
+        recoveryCodes,
+    };
+}
+
+async function disableTwoFactor(userId, code) {
+    if (!userId) {
+        const error = new Error('User ID is required');
+        error.statusCode = 401;
+        throw error;
+    }
+
+    const user = await repository.findById(userId);
+
+    if (!user) {
+        const error = new Error('User not found');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    if (!user.twoFactorEnabled) {
+        const error = new Error(
+            'Two-factor authentication is not enabled.'
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const valid = verifyMfaCode({
+        secret: user.twoFactorSecret,
+        email: user.email,
+        code,
+    });
+
+    if (!valid) {
+        const error = new Error(
+            'Invalid authentication code.'
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const updatedUser =
+        await repository.clearTwoFactorSecret(userId);
+
+    if (!updatedUser) {
+        const error = new Error(
+            'Failed to disable two-factor authentication.'
+        );
+        error.statusCode = 500;
+        throw error;
+    }
+
+    return sanitizeUser(updatedUser);
+}
+
+async function verifyTwoFactorRecoveryCode(
+    userId,
+    code
+) {
+    if (!userId) {
+        const error = new Error('User ID is required');
+        error.statusCode = 401;
+        throw error;
+    }
+
+    if (
+        typeof code !== 'string' ||
+        !code.trim()
+    ) {
+        const error = new Error(
+            'Recovery code is required.'
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const normalizedCode = code
+        .trim()
+        .toUpperCase();
+
+    if (
+        !/^KZ-[A-F0-9]{8}-[A-F0-9]{8}$/.test(
+            normalizedCode
+        )
+    ) {
+        const error = new Error(
+            'Invalid recovery code format.'
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const user = await repository.findById(userId);
+
+    if (!user) {
+        const error = new Error('User not found');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    if (user.isBlocked) {
+        const error = new Error(
+            'Your account has been blocked'
+        );
+        error.statusCode = 403;
+        throw error;
+    }
+
+    if (!user.twoFactorEnabled) {
+        const error = new Error(
+            'Two-factor authentication is not enabled.'
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    if (
+        !Array.isArray(user.twoFactorRecoveryCodes) ||
+        user.twoFactorRecoveryCodes.length === 0
+    ) {
+        const error = new Error(
+            'No recovery codes are available for this account.'
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const recoveryCodeHash =
+        hashRecoveryCode(normalizedCode);
+
+    const consumedUser =
+        await repository.consumeTwoFactorRecoveryCode(
+            userId,
+            recoveryCodeHash
+        );
+
+    if (!consumedUser) {
+        const error = new Error(
+            'Invalid or already used recovery code.'
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    return {
+        success: true,
+        remainingRecoveryCodes:
+            consumedUser.twoFactorRecoveryCodes.length,
+    };
+}
+
 module.exports = {
     registerUser,
     requestPasswordReset,
@@ -831,10 +1295,16 @@ module.exports = {
     verifyEmail,
     getCurrentUser,
     updateCurrentUser,
+    createMfaChallengeToken,
+    verifyMfaChallenge,
     createToken,
     sanitizeUser,
     loginWithGoogle,
     exchangeOAuthHandoffCode,
     loginWithDiscord,
     loginAdmin,
+    startTwoFactorSetup,
+    enableTwoFactor,
+    disableTwoFactor,
+    verifyTwoFactorRecoveryCode,
 };

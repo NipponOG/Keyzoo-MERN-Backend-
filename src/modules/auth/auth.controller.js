@@ -284,6 +284,108 @@ async function discordCallback(req, res, next) {
     }
 }
 
+async function startTwoFactorSetup(req, res, next) {
+    try {
+        const setup =
+            await authService.startTwoFactorSetup(
+                req.user.userId
+            );
+
+        res.json({
+            success: true,
+            data: setup,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+async function enableTwoFactor(req, res, next) {
+    try {
+        const { code } = req.body;
+
+        const result =
+            await authService.enableTwoFactor(
+                req.user.userId,
+                code
+            );
+
+        res.json({
+            success: true,
+            message:
+                'Two-factor authentication enabled successfully.',
+            user: result.user,
+            recoveryCodes: result.recoveryCodes,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+async function disableTwoFactor(req, res, next) {
+    try {
+        const { code } = req.body;
+
+        const user =
+            await authService.disableTwoFactor(
+                req.user.userId,
+                code
+            );
+
+        res.json({
+            success: true,
+            message:
+                'Two-factor authentication disabled successfully.',
+            user,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+async function verifyTwoFactorRecoveryCode(req, res, next) {
+    try {
+        const { code } = req.body;
+
+        const result =
+            await authService.verifyTwoFactorRecoveryCode(
+                req.user.userId,
+                code
+            );
+
+        res.json({
+            success: true,
+            message:
+                'Recovery code verified successfully.',
+            data: result,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+async function verifyMfaChallenge(req, res, next) {
+    try {
+        const { challengeToken, code } = req.body;
+
+        const result =
+            await authService.verifyMfaChallenge(
+                challengeToken,
+                code
+            );
+
+        res.json({
+            success: true,
+            message:
+                'Two-factor authentication verified successfully.',
+            jwt: result.jwt,
+            user: result.user,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 module.exports = {
     register,
     login,
@@ -297,4 +399,9 @@ module.exports = {
     discordLogin,
     discordCallback,
     exchangeOAuthCode,
+    startTwoFactorSetup,
+    enableTwoFactor,
+    disableTwoFactor,
+    verifyTwoFactorRecoveryCode,
+    verifyMfaChallenge,
 };

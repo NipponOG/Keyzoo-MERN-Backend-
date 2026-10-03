@@ -16,6 +16,12 @@ router.post('/reset-password', controller.resetPassword);
 router.get('/me', requireAuth, controller.getCurrentUser);
 router.patch('/me', requireAuth, controller.updateCurrentUser);
 
+router.post('/2fa/setup', requireAuth, controller.startTwoFactorSetup);
+router.post('/2fa/enable', requireAuth, controller.enableTwoFactor);
+router.post('/2fa/disable', requireAuth, controller.disableTwoFactor);
+router.post('/2fa/recovery', requireAuth, controller.verifyTwoFactorRecoveryCode);
+router.post('/2fa/verify', controller.verifyMfaChallenge);
+
 router.get('/google', controller.googleLogin);
 router.get('/google/callback', controller.googleCallback);
 
