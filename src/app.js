@@ -12,6 +12,8 @@ const passwordResetEmailTestRoutes = require('./modules/email/password-reset.ema
 const passwordChangedEmailTestRoutes = require('./modules/email/password-changed.email.test.routes');
 const emailTestRoutes = require('./modules/email/email.test.routes');
 
+const ticketRoutes = require('./modules/tickets/ticket.routes');
+
 const heroBannerRoutes = require('./modules/hero-banners/hero-banner.routes');
 const gameBannerRoutes = require('./modules/game-banners/game-banner.routes');
 const promoBannerRoutes = require('./modules/promo-banners/promo-banner.routes');
@@ -44,6 +46,7 @@ const orderRoutes = require('./modules/orders/order.routes');
 const mediaRoutes = require('./modules/media/media.routes');
 const maintenanceRoutes = require('./modules/maintenance/maintenance.routes');
 
+const ticketAdminRoutes = require('./modules/tickets/ticket.admin.routes');
 const couponAdminRoutes = require('./modules/coupons/coupon.admin.routes');
 
 const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
@@ -110,6 +113,7 @@ app.use('/api/v1/email', emailTestRoutes);
 app.use('/api/v1/search', maintenanceMiddleware, searchRoutes);
 app.use('/api/v1/newsletter', maintenanceMiddleware, newsletterRoutes);
 app.use('/api/v1/orders', maintenanceMiddleware, orderRoutes);
+app.use('/api/v1/tickets', maintenanceMiddleware, ticketRoutes);
 app.use('/api/v1/products', maintenanceMiddleware, productRoutes);
 app.use('/api/v1/gift-cards', maintenanceMiddleware, giftCardRoutes);
 app.use('/api/v1/game-keys', maintenanceMiddleware, gameKeyRoutes);
@@ -144,6 +148,7 @@ app.use('/api/v1/admin/promo-banners', promoBannerAdminRoutes);
 app.use('/api/v1/admin/category-banners', categoryBannerAdminRoutes);
 app.use('/api/v1/admin/ad-banners', adBannerAdminRoutes);
 app.use('/api/v1/admin/coupons', couponAdminRoutes);
+app.use('/api/v1/admin/tickets', ticketAdminRoutes);
 
 // ─────────────────────────────────────────────
 // Error handler
