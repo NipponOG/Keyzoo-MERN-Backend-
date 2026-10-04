@@ -21,6 +21,11 @@ router.get(
 );
 
 router.get(
+    '/catalog',
+    controller.getPublishedProductCatalog
+);
+
+router.get(
     '/:slug',
     controller.getProductBySlug
 );

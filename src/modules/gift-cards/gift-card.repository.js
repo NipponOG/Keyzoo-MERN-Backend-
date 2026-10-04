@@ -163,6 +163,27 @@ async function findPublishedBestSelling(limit = 30) {
         .toArray();
 }
 
+async function findPublishedCatalog() {
+    return getCollection()
+        .find(
+            {
+                type: 'gift-card',
+                status: 'published',
+            },
+            {
+                projection: {
+                    _id: 1,
+                    title: 1,
+                    slug: 1,
+                },
+            }
+        )
+        .sort({
+            title: 1,
+        })
+        .toArray();
+}
+
 // Delete a gift card by MongoDB _id
 async function deleteById(id) {
     const objectId = toObjectId(id);
@@ -185,6 +206,7 @@ module.exports = {
     findByGroupId,
     findPublishedRecommended,
     findPublishedBestSelling,
+    findPublishedCatalog,
     create,
     updateById,
     createMany,

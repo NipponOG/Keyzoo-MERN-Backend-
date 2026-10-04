@@ -1196,6 +1196,10 @@ async function getPublishedBestSellingGiftCards(limit = 30) {
     );
 }
 
+async function getPublishedGiftCardCatalog() {
+    return repository.findPublishedCatalog();
+}
+
 async function addEffectiveAvailability(giftCard) {
     const gameKeys =
         await gameKeyRepository.findByGiftCardId(
@@ -1227,6 +1231,7 @@ module.exports = {
     getPublishedGiftCardVariations,
     getPublishedRecommendedGiftCards,
     getPublishedBestSellingGiftCards,
+    getPublishedGiftCardCatalog,
     createGiftCard,
     createGiftCardWithVariations,
     addGiftCardVariation,

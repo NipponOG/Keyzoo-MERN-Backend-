@@ -155,6 +155,20 @@ async function deleteProduct(req, res, next) {
     }
 }
 
+async function getPublishedProductCatalog(req, res, next) {
+    try {
+        const products =
+            await productService.getPublishedProductCatalog();
+
+        return res.json({
+            success: true,
+            data: products,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 async function getPublishedRecommendedProducts(req, res, next) {
     try {
         const limit = Math.min(
@@ -203,6 +217,7 @@ module.exports = {
     addProductVariation,
     updateProduct,
     deleteProduct,
+    getPublishedProductCatalog,
     getPublishedRecommendedProducts,
     getPublishedBestSellingProducts,
 };

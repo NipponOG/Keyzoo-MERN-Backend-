@@ -187,6 +187,20 @@ async function getPublishedBestSellingGiftCards(req, res, next) {
     }
 }
 
+async function getPublishedGiftCardCatalog(req, res, next) {
+    try {
+        const giftCards =
+            await giftCardService.getPublishedGiftCardCatalog();
+
+        return res.json({
+            success: true,
+            data: giftCards,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 async function updateGiftCard(req, res, next) {
     try {
         const { id } = req.params;
@@ -230,6 +244,7 @@ module.exports = {
     getGiftCardVariations,
     getPublishedRecommendedGiftCards,
     getPublishedBestSellingGiftCards,
+    getPublishedGiftCardCatalog,
     createGiftCard,
     createGiftCardWithVariations,
     addGiftCardVariation,

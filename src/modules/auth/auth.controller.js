@@ -74,6 +74,16 @@ async function login(req, res, next) {
             password,
         });
 
+        // MFA is required
+        if (result.requiresTwoFactor) {
+            return res.json({
+                success: true,
+                requiresTwoFactor: true,
+                challengeToken: result.challengeToken,
+            });
+        }
+
+        // Normal login
         res.json({
             success: true,
             jwt: result.jwt,

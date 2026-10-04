@@ -21,6 +21,11 @@ router.get(
 );
 
 router.get(
+    '/catalog',
+    controller.getPublishedGiftCardCatalog
+);
+
+router.get(
     '/:slug',
     controller.getGiftCardBySlug
 );

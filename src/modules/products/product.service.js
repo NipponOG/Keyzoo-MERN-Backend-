@@ -1324,6 +1324,10 @@ async function deleteProduct(id) {
     };
 }
 
+async function getPublishedProductCatalog() {
+    return repository.findPublishedCatalog();
+}
+
 async function getPublishedRecommendedProducts(limit = 12) {
     const products =
         await repository.findPublishedRecommended(limit);
@@ -1353,6 +1357,7 @@ module.exports = {
     addProductVariation,
     updateProduct,
     deleteProduct,
+    getPublishedProductCatalog,
     getPublishedRecommendedProducts,
     getPublishedBestSellingProducts,
     addEffectiveAvailability,
