@@ -31,14 +31,30 @@ async function create(ticketData) {
 }
 
 async function findById(id) {
-    const objectId = toObjectId(id);
-
-    if (!objectId) {
+    if (!id) {
         return null;
     }
 
+    const value = id.toString().trim();
+
+    if (!value) {
+        return null;
+    }
+
+    const objectId = toObjectId(value);
+
+    if (objectId) {
+        const ticketById = await getCollection().findOne({
+            _id: objectId,
+        });
+
+        if (ticketById) {
+            return ticketById;
+        }
+    }
+
     return getCollection().findOne({
-        _id: objectId,
+        ticketNumber: value,
     });
 }
 

@@ -826,6 +826,7 @@ async function getUserOrderByOrderNumber(
         : [];
 
     return {
+        _id: order._id?.toString?.() ?? order._id,
         orderNumber: order.orderNumber,
 
         subtotalAmount:
@@ -932,6 +933,10 @@ async function getUserOrders({
     return {
         data: result.orders.map(
             (order) => ({
+                _id:
+                    order._id?.toString?.() ??
+                    order._id,
+
                 orderNumber:
                     order.orderNumber,
 
@@ -1076,7 +1081,7 @@ async function markOrderPaidWithCoupon(
 module.exports = {
     createPendingOrder,
     markOrderPaidWithCoupon,
-    
+
     getAdminOrders,
     getOrderById,
     getOrderByOrderNumber,
