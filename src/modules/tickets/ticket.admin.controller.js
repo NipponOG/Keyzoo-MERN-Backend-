@@ -52,13 +52,17 @@ async function addAdminMessage(req, res, next) {
     try {
         const adminId = req.user?.userId;
         const { id } = req.params;
-        const { message } = req.body || {};
+        const {
+            message,
+            attachments,
+        } = req.body || {};
 
         const ticket =
             await ticketAdminService.addAdminMessage(
                 id,
                 adminId,
-                message
+                message,
+                attachments
             );
 
         return res.json({

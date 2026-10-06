@@ -3,6 +3,14 @@
 function createTicketDocument(data = {}) {
     const now = new Date();
 
+    const messages = Array.isArray(data.messages)
+        ? data.messages.map((message) => ({
+            ...message,
+            attachments:
+                message.attachments ?? [],
+        }))
+        : [];
+
     return {
         ticketNumber: data.ticketNumber ?? '',
 
@@ -30,7 +38,7 @@ function createTicketDocument(data = {}) {
         status: data.status ?? 'open',
 
         // Conversation
-        messages: data.messages ?? [],
+        messages,
 
         // Resolution
         resolution: data.resolution ?? null,

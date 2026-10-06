@@ -111,6 +111,23 @@ function createServiceError(message, statusCode = 400) {
     return error;
 }
 
+function normalizeAttachments(attachments) {
+    if (!Array.isArray(attachments)) {
+        return [];
+    }
+
+    return attachments.map((attachment) => ({
+        fileId: attachment.fileId ?? null,
+        name: attachment.name ?? null,
+        url: attachment.url ?? null,
+        thumbnailUrl: attachment.thumbnailUrl ?? null,
+        filePath: attachment.filePath ?? null,
+        mimeType: attachment.mimeType ?? null,
+        size: attachment.size ?? 0,
+        originalName: attachment.originalName ?? null,
+    }));
+}
+
 async function createTicket({
     userId,
     orderId,
@@ -120,6 +137,7 @@ async function createTicket({
     subject,
     description,
     priority = 'normal',
+    attachments = [],
 }) {
     if (!userId) {
         throw createServiceError(
@@ -194,6 +212,9 @@ async function createTicket({
         purchasedItem.id ??
         purchasedItem._id;
 
+    const normalizedAttachments =
+        normalizeAttachments(attachments);
+
     const ticket = await ticketRepository.create({
         ticketNumber: generateTicketNumber(),
 
@@ -236,6 +257,7 @@ async function createTicket({
                 senderType: 'customer',
                 senderId: normalizeUserId(userId),
                 message: description.trim(),
+                attachments: normalizedAttachments,
                 createdAt: new Date(),
             },
         ],
@@ -321,7 +343,8 @@ async function getTicketsByOrderForUser(orderId, userId) {
 async function addCustomerMessage(
     ticketId,
     userId,
-    message
+    message,
+    attachments = []
 ) {
     if (!message || !message.trim()) {
         throw createServiceError(
@@ -344,6 +367,7 @@ async function addCustomerMessage(
         senderType: 'customer',
         senderId: normalizeUserId(userId),
         message: message.trim(),
+        attachments: normalizeAttachments(attachments),
         createdAt: new Date(),
     };
 

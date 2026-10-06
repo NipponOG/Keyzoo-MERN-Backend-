@@ -13,6 +13,7 @@ const passwordChangedEmailTestRoutes = require('./modules/email/password-changed
 const emailTestRoutes = require('./modules/email/email.test.routes');
 
 const ticketRoutes = require('./modules/tickets/ticket.routes');
+const uploadRoutes = require('./modules/uploads/upload.routes');
 
 const heroBannerRoutes = require('./modules/hero-banners/hero-banner.routes');
 const gameBannerRoutes = require('./modules/game-banners/game-banner.routes');
@@ -82,7 +83,15 @@ app.use(
         type: 'application/json',
     })
 );
-app.use(express.json());
+
+app.use(
+    express.json({
+        limit: '1mb',
+        type: 'application/json',
+    })
+);
+
+// app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // ─────────────────────────────────────────────
@@ -110,6 +119,7 @@ app.use('/api/v1/email', passwordResetEmailTestRoutes);
 app.use('/api/v1/email', passwordChangedEmailTestRoutes);
 app.use('/api/v1/email', emailTestRoutes);
 
+app.use('/api/v1/uploads', uploadRoutes);
 app.use('/api/v1/search', maintenanceMiddleware, searchRoutes);
 app.use('/api/v1/newsletter', maintenanceMiddleware, newsletterRoutes);
 app.use('/api/v1/orders', maintenanceMiddleware, orderRoutes);

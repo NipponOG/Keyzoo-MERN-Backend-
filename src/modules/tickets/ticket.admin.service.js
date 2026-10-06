@@ -28,6 +28,25 @@ function validateStatus(status) {
     }
 }
 
+function normalizeAttachments(attachments) {
+    if (!Array.isArray(attachments)) {
+        return [];
+    }
+
+    return attachments.map((attachment) => ({
+        fileId: attachment.fileId ?? null,
+        name: attachment.name ?? null,
+        url: attachment.url ?? null,
+        thumbnailUrl:
+            attachment.thumbnailUrl ?? null,
+        filePath: attachment.filePath ?? null,
+        mimeType: attachment.mimeType ?? null,
+        size: attachment.size ?? 0,
+        originalName:
+            attachment.originalName ?? null,
+    }));
+}
+
 async function getAdminTickets(options = {}) {
     return ticketAdminRepository.findAdminTickets(
         options
@@ -51,7 +70,8 @@ async function getAdminTicket(ticketId) {
 async function addAdminMessage(
     ticketId,
     adminId,
-    message
+    message,
+    attachments = []
 ) {
     if (!adminId) {
         throw createServiceError(
@@ -78,6 +98,8 @@ async function addAdminMessage(
         senderType: 'admin',
         senderId: adminId.toString(),
         message: message.trim(),
+        attachments:
+            normalizeAttachments(attachments),
         createdAt: new Date(),
     };
 

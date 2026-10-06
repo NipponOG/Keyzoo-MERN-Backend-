@@ -14,6 +14,7 @@ async function createTicket(req, res, next) {
             subject,
             description,
             priority,
+            attachments,
         } = req.body || {};
 
         const ticket = await ticketService.createTicket({
@@ -25,6 +26,7 @@ async function createTicket(req, res, next) {
             subject,
             description,
             priority,
+            attachments,
         });
 
         return res.status(201).json({
@@ -107,13 +109,17 @@ async function addCustomerMessage(req, res, next) {
     try {
         const userId = req.user?.userId;
         const { id } = req.params;
-        const { message } = req.body || {};
+        const {
+            message,
+            attachments,
+        } = req.body || {};
 
         const ticket =
             await ticketService.addCustomerMessage(
                 id,
                 userId,
-                message
+                message,
+                attachments
             );
 
         return res.json({
