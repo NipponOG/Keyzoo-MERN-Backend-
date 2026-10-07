@@ -14,6 +14,7 @@ const emailTestRoutes = require('./modules/email/email.test.routes');
 
 const ticketRoutes = require('./modules/tickets/ticket.routes');
 const uploadRoutes = require('./modules/uploads/upload.routes');
+const invoiceRoutes = require('./modules/invoices/invoice.routes');
 
 const heroBannerRoutes = require('./modules/hero-banners/hero-banner.routes');
 const gameBannerRoutes = require('./modules/game-banners/game-banner.routes');
@@ -123,6 +124,7 @@ app.use('/api/v1/uploads', uploadRoutes);
 app.use('/api/v1/search', maintenanceMiddleware, searchRoutes);
 app.use('/api/v1/newsletter', maintenanceMiddleware, newsletterRoutes);
 app.use('/api/v1/orders', maintenanceMiddleware, orderRoutes);
+app.use('/api/v1/invoices', maintenanceMiddleware, invoiceRoutes);
 app.use('/api/v1/tickets', maintenanceMiddleware, ticketRoutes);
 app.use('/api/v1/products', maintenanceMiddleware, productRoutes);
 app.use('/api/v1/gift-cards', maintenanceMiddleware, giftCardRoutes);
