@@ -25,6 +25,7 @@ const adBannerRoutes = require('./modules/ad-banners/ad-banner.routes');
 const searchRoutes = require('./modules/search/search.routes');
 const newsletterRoutes = require('./modules/newsletter/newsletter.routes');
 
+const storeRoutes = require('./modules/store/store.routes');
 const productRoutes = require('./modules/products/product.routes');
 const giftCardRoutes = require('./modules/gift-cards/gift-card.routes');
 const gameKeyRoutes = require('./modules/game-keys/game-key.routes');
@@ -120,6 +121,8 @@ app.use('/api/v1/email', passwordResetEmailTestRoutes);
 app.use('/api/v1/email', passwordChangedEmailTestRoutes);
 app.use('/api/v1/email', emailTestRoutes);
 
+app.use('/api/v1/store', maintenanceMiddleware, storeRoutes);
+
 app.use('/api/v1/uploads', uploadRoutes);
 app.use('/api/v1/search', maintenanceMiddleware, searchRoutes);
 app.use('/api/v1/newsletter', maintenanceMiddleware, newsletterRoutes);
@@ -135,7 +138,6 @@ app.use('/api/v1/home/game-banners', maintenanceMiddleware, gameBannerRoutes);
 app.use('/api/v1/home/promo-banners', maintenanceMiddleware, promoBannerRoutes);
 app.use('/api/v1/home/category-banners', maintenanceMiddleware, categoryBannerRoutes);
 app.use('/api/v1/home/ad-banners', maintenanceMiddleware, adBannerRoutes);
-
 app.use('/api/v1/payments/stripe/webhook', paymentRoutes);
 app.use('/api/v1/payments', maintenanceMiddleware, paymentRoutes);
 
