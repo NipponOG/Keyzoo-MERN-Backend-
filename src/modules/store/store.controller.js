@@ -3,7 +3,7 @@
 const storeService = require('./store.service');
 
 async function getStoreItems(req, res, next) {
-    
+
     try {
 
         const result = await storeService.getStoreItems(req.query);
@@ -20,6 +20,20 @@ async function getStoreItems(req, res, next) {
     }
 }
 
+async function getStoreFilterOptions(req, res, next) {
+    try {
+        const result = await storeService.getStoreFilterOptions();
+
+        return res.status(200).json({
+            success: true,
+            data: result,
+        });
+    } catch (error) {
+        return next(error);
+    }
+}
+
 module.exports = {
     getStoreItems,
+    getStoreFilterOptions,
 };

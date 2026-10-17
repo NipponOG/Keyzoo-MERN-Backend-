@@ -3,6 +3,53 @@
 
 const storeRepository = require('./store.repository');
 
+async function getStoreFilterOptions() {
+    const [products, giftCards] = await Promise.all([
+        storeRepository.findPublishedProducts(),
+        storeRepository.findPublishedGiftCards(),
+    ]);
+
+    const items = [...products, ...giftCards];
+
+    const uniqueValues = (values) => [
+        ...new Set(
+            values
+                .filter((value) => value !== null && value !== undefined && value !== '')
+                .map((value) => String(value).trim())
+                .filter(Boolean)
+        ),
+    ].sort((a, b) => a.localeCompare(b));
+
+    return {
+        platforms: uniqueValues(items.map((item) => item.platform)),
+        regions: uniqueValues(items.map((item) => item.card_region || item.region)),
+        productTypes: uniqueValues(items.map((item) => item.item_type)),
+        worksOn: uniqueValues(items.map((item) => item.workPlatform || item.work_platform)),
+        counts: {
+            platforms: items.reduce((acc, item) => {
+                const value = item.platform;
+                if (value) acc[value] = (acc[value] || 0) + 1;
+                return acc;
+            }, {}),
+            regions: items.reduce((acc, item) => {
+                const value = item.card_region || item.region;
+                if (value) acc[value] = (acc[value] || 0) + 1;
+                return acc;
+            }, {}),
+            productTypes: items.reduce((acc, item) => {
+                const value = item.item_type;
+                if (value) acc[value] = (acc[value] || 0) + 1;
+                return acc;
+            }, {}),
+            worksOn: items.reduce((acc, item) => {
+                const value = item.workPlatform || item.work_platform;
+                if (value) acc[value] = (acc[value] || 0) + 1;
+                return acc;
+            }, {}),
+        },
+    };
+}
+
 async function getStoreItems(query = {}) {
     const [products, giftCards] = await Promise.all([
         storeRepository.findPublishedProducts(),
@@ -130,4 +177,5 @@ async function getStoreItems(query = {}) {
 
 module.exports = {
     getStoreItems,
+    getStoreFilterOptions,
 };
