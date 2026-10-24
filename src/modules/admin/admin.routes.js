@@ -10,4 +10,11 @@ router.post('/login', controller.login);
 
 router.get('/me', requireAdmin, controller.getCurrentAdmin);
 
+router.get('/login-activity', requireAdmin, controller.getLoginActivity);
+
+router.post('/passkeys/register/options', requireAdmin, controller.getPasskeyRegistrationOptions);
+router.post('/passkeys/register/verify', requireAdmin, controller.verifyPasskeyRegistration);
+router.get('/passkeys', requireAdmin, controller.getAdminPasskeys);
+router.delete('/passkeys/:id', requireAdmin, controller.removeAdminPasskey);
+
 module.exports = router;
