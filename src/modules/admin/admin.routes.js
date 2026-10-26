@@ -7,6 +7,8 @@ const requireAdmin = require('./admin.middleware');
 const router = express.Router();
 
 router.post('/login', controller.login);
+router.post('/passkeys/authentication/options', controller.getPasskeyAuthenticationOptions);
+router.post('/passkeys/authentication/verify', controller.verifyPasskeyAuthentication);
 
 router.get('/me', requireAdmin, controller.getCurrentAdmin);
 

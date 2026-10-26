@@ -1,21 +1,36 @@
 
 'use strict';
 
-const { isoUint8Array } = require('@simplewebauthn/server/helpers');
-const { generateRegistrationOptions, verifyRegistrationResponse, } = require('@simplewebauthn/server');
+const { randomUUID } = require('node:crypto');
+
+const {
+    isoUint8Array,
+} = require('@simplewebauthn/server/helpers');
+
+const {
+    generateRegistrationOptions,
+    verifyRegistrationResponse,
+    generateAuthenticationOptions,
+    verifyAuthenticationResponse,
+} = require('@simplewebauthn/server');
 
 const authRepository = require('./auth.repository');
+const authService = require('./auth.service');
 const passkeyRepository = require('./passkey.repository');
 const challengeRepository = require('./passkey-challenge.repository');
 const { rpName, rpID, origin } = require('../../config/webauthn');
+
+function createError(message, statusCode) {
+    const error = new Error(message);
+    error.statusCode = statusCode;
+    return error;
+}
 
 async function getRegistrationOptions(userId) {
     const user = await authRepository.findById(userId);
 
     if (!user || user.role !== 'admin' || user.isBlocked) {
-        const error = new Error('Admin access required');
-        error.statusCode = 403;
-        throw error;
+        throw createError('Admin access required', 403);
     }
 
     const existingPasskeys = await passkeyRepository.findByUserId(userId);
@@ -46,19 +61,16 @@ async function verifyRegistration(userId, response, name = 'My passkey') {
     const user = await authRepository.findById(userId);
 
     if (!user || user.role !== 'admin' || user.isBlocked) {
-        const error = new Error('Admin access required');
-        error.statusCode = 403;
-        throw error;
+        throw createError('Admin access required', 403);
     }
 
     const savedChallenge = await challengeRepository.consume(userId);
 
     if (!savedChallenge) {
-        const error = new Error(
-            'Registration challenge expired or not found. Please try again.'
+        throw createError(
+            'Registration challenge expired or not found. Please try again.',
+            400
         );
-        error.statusCode = 400;
-        throw error;
     }
 
     const verification = await verifyRegistrationResponse({
@@ -70,13 +82,10 @@ async function verifyRegistration(userId, response, name = 'My passkey') {
     });
 
     if (!verification.verified || !verification.registrationInfo) {
-        const error = new Error('Passkey registration verification failed');
-        error.statusCode = 400;
-        throw error;
+        throw createError('Passkey registration verification failed', 400);
     }
 
     const { registrationInfo } = verification;
-
     const credential = registrationInfo.credential;
 
     await passkeyRepository.create({
@@ -95,13 +104,107 @@ async function verifyRegistration(userId, response, name = 'My passkey') {
     return { verified: true };
 }
 
+async function getAuthenticationOptions() {
+    const options = await generateAuthenticationOptions({
+        rpID,
+        userVerification: 'required',
+    });
+
+    // Use a unique key per attempt so simultaneous logins do not overwrite
+    // one another's challenges. The key is not an authentication credential.
+    const challengeKey = randomUUID();
+
+    await challengeRepository.save(
+        challengeKey,
+        options.challenge,
+        'authentication'
+    );
+
+    return {
+        options,
+        challengeKey,
+    };
+}
+
+async function verifyAuthentication(challengeKey, response) {
+    if (
+        typeof challengeKey !== 'string' ||
+        !challengeKey ||
+        !response ||
+        typeof response.id !== 'string'
+    ) {
+        throw createError('Invalid passkey authentication request', 400);
+    }
+
+    // Consume the challenge before verification so it cannot be replayed.
+    const savedChallenge = await challengeRepository.consume(
+        challengeKey,
+        'authentication'
+    );
+
+    if (!savedChallenge) {
+        throw createError(
+            'Authentication challenge expired or already used. Please try again.',
+            400
+        );
+    }
+
+    const passkey = await passkeyRepository.findByCredentialId(response.id);
+
+    if (!passkey) {
+        throw createError('Invalid passkey or authentication failed', 401);
+    }
+
+    const user = await authRepository.findById(passkey.userId);
+
+    if (!user || user.role !== 'admin' || user.isBlocked) {
+        throw createError('Admin access required', 403);
+    }
+
+    let verification;
+
+    try {
+        verification = await verifyAuthenticationResponse({
+            response,
+            expectedChallenge: savedChallenge.challenge,
+            expectedOrigin: origin,
+            expectedRPID: rpID,
+            requireUserVerification: true,
+            credential: {
+                id: passkey.credentialId,
+                publicKey: Buffer.from(passkey.publicKey, 'base64url'),
+                counter: passkey.counter,
+                transports: passkey.transports,
+            },
+        });
+    } catch {
+        throw createError('Passkey authentication failed', 401);
+    }
+
+    if (!verification.verified) {
+        throw createError('Passkey authentication failed', 401);
+    }
+
+    const { authenticationInfo } = verification;
+
+    await passkeyRepository.updateCounter(
+        passkey.credentialId,
+        authenticationInfo.newCounter,
+        authenticationInfo.credentialBackedUp
+    );
+
+    return {
+        verified: true,
+        jwt: authService.createToken(user),
+        user: authService.sanitizeUser(user),
+    };
+}
+
 async function getPasskeys(userId) {
     const user = await authRepository.findById(userId);
 
     if (!user || user.role !== 'admin' || user.isBlocked) {
-        const error = new Error('Admin access required');
-        error.statusCode = 403;
-        throw error;
+        throw createError('Admin access required', 403);
     }
 
     const passkeys = await passkeyRepository.findByUserId(userId);
@@ -120,20 +223,13 @@ async function removePasskey(userId, passkeyId) {
     const user = await authRepository.findById(userId);
 
     if (!user || user.role !== 'admin' || user.isBlocked) {
-        const error = new Error('Admin access required');
-        error.statusCode = 403;
-        throw error;
+        throw createError('Admin access required', 403);
     }
 
-    const result = await passkeyRepository.removeById(
-        userId,
-        passkeyId
-    );
+    const result = await passkeyRepository.removeById(userId, passkeyId);
 
     if (result.deletedCount === 0) {
-        const error = new Error('Passkey not found');
-        error.statusCode = 404;
-        throw error;
+        throw createError('Passkey not found', 404);
     }
 
     return { removed: true };
@@ -142,6 +238,8 @@ async function removePasskey(userId, passkeyId) {
 module.exports = {
     getRegistrationOptions,
     verifyRegistration,
+    getAuthenticationOptions,
+    verifyAuthentication,
     getPasskeys,
     removePasskey,
 };

@@ -16,7 +16,7 @@ async function startServer() {
         console.log('✅ Auth indexes ready');
         console.log('✅ Order indexes ready');
 
-        const server = app.listen(env.port, () => {
+        const server = app.listen(env.port, '0.0.0.0', () => {
             console.log(`🚀 Keyzoo backend running on port ${env.port}`);
         });
 

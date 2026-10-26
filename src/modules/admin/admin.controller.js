@@ -177,6 +177,63 @@ async function removeAdminPasskey(req, res, next) {
     }
 }
 
+
+async function getPasskeyAuthenticationOptions(req, res, next) {
+    try {
+        const result = await passkeyService.getAuthenticationOptions();
+
+        res.json({
+            success: true,
+            ...result,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+async function verifyPasskeyAuthentication(req, res, next) {
+    try {
+        const { challengeKey, response } = req.body || {};
+
+        if (!challengeKey || !response) {
+            const error = new Error(
+                'Challenge key and passkey response are required'
+            );
+            error.statusCode = 400;
+            throw error;
+        }
+
+        const result = await passkeyService.verifyAuthentication(
+            challengeKey,
+            response
+        );
+
+        // Record successful passkey login, but don't fail login if
+        // the activity-history write fails.
+        try {
+            await adminLoginHistoryRepository.recordSuccessfulLogin({
+                userId: result.user.id,
+                ipAddress: req.ip,
+                userAgent: req.get('user-agent'),
+                loginMethod: 'passkey',
+            });
+        } catch (historyError) {
+            console.error(
+                'Failed to record passkey login history:',
+                historyError
+            );
+        }
+
+        res.json({
+            success: true,
+            jwt: result.jwt,
+            user: result.user,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 module.exports = {
     login,
     getCurrentAdmin,
@@ -185,4 +242,6 @@ module.exports = {
     verifyPasskeyRegistration,
     getAdminPasskeys,
     removeAdminPasskey,
+    getPasskeyAuthenticationOptions,
+    verifyPasskeyAuthentication,
 };
