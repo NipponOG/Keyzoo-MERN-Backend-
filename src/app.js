@@ -66,7 +66,27 @@ const app = express();
 // ─────────────────────────────────────────────
 
 app.use(helmet());
-app.use(cors());
+
+const cors = require('cors');
+const allowedOrigins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+];
+
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow requests without an Origin header, such as server-to-server
+        // requests, health checks, and command-line tools.
+        if (!origin || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+
+        return callback(new Error('Not allowed by CORS'));
+    },
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
 app.use(morgan('dev'));
 app.use('/api/v1/payments/stripe/webhook',
     express.raw({
