@@ -73,6 +73,7 @@ const allowedOrigins = [
     'http://127.0.0.1:3000',
     // If you have a frontend deployed, add its URL here. For example:
     // 'https://your-frontend-domain.com',
+    'https://keyzo-store.vercel.app'
 ];
 
 app.use(cors({
