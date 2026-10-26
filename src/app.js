@@ -71,6 +71,8 @@ app.use(helmet());
 const allowedOrigins = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
+    // If you have a frontend deployed, add its URL here. For example:
+    // 'https://your-frontend-domain.com',
 ];
 
 app.use(cors({
