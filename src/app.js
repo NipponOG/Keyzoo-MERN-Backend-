@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const { getDatabase } = require('./config/database');
 
 const welcomeEmailTestRoutes = require('./modules/email/welcome.email.test.routes');
 const verificationEmailTestRoutes = require('./modules/email/verification.email.test.routes');
@@ -123,7 +124,35 @@ app.use(express.urlencoded({ extended: true }));
 // Health
 // ─────────────────────────────────────────────
 
-app.get('/api/v1/health', (req, res) => { res.json({ success: true, message: 'Keyzoo backend is running', }); });
+// app.get('/api/v1/health', (req, res) => { res.json({ success: true, message: 'Keyzoo backend is running', }); });
+// Basic backend health check
+app.get('/api/v1/health', (req, res) => {
+    res.status(200).json({
+        success: true,
+        message: 'Keyzoo backend is running',
+    });
+});
+
+// MongoDB connectivity health check
+app.get('/api/v1/health/database', async (req, res) => {
+    try {
+        const database = getDatabase();
+
+        await database.command({ ping: 1 });
+
+        return res.status(200).json({
+            success: true,
+            message: 'Database connection is healthy',
+        });
+    } catch (error) {
+        console.error('[Database Health Check] MongoDB ping failed:', error.message);
+
+        return res.status(503).json({
+            success: false,
+            message: 'Database connection is unavailable',
+        });
+    }
+});
 
 // ─────────────────────────────────────────────
 // Maintenance status
