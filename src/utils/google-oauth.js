@@ -2,7 +2,7 @@
 
 const { OAuth2Client } = require('google-auth-library');
 const env = require('../config/env');
-const GOOGLE_REDIRECT_URI = 'http://localhost:5000/api/v1/auth/google/callback';
+const GOOGLE_REDIRECT_URI = 'https://keyzoo-mern-backend-1.onrender.com/api/v1/auth/google/callback';
 
 const googleClient = new OAuth2Client(
     env.google.clientId,
