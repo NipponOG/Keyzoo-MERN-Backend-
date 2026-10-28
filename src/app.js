@@ -1,10 +1,13 @@
 'use strict';
 
+require('./instrument');
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const { getDatabase } = require('./config/database');
+const Sentry = require('@sentry/node');
 
 const welcomeEmailTestRoutes = require('./modules/email/welcome.email.test.routes');
 const verificationEmailTestRoutes = require('./modules/email/verification.email.test.routes');
@@ -219,6 +222,8 @@ app.use('/api/v1/admin/tickets', ticketAdminRoutes);
 // ─────────────────────────────────────────────
 // Error handler
 // ─────────────────────────────────────────────
+
+Sentry.setupExpressErrorHandler(app);
 
 app.use(errorMiddleware);
 

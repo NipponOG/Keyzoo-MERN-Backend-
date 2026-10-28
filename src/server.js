@@ -1,7 +1,9 @@
 'use strict';
 
-const app = require('./app');
+
 const env = require('./config/env');
+require('./instrument');
+const app = require('./app');
 const { connectDatabase, closeDatabase } = require('./config/database');
 const authRepository = require('./modules/auth/auth.repository');
 const orderRepository = require('./modules/orders/order.repository');
