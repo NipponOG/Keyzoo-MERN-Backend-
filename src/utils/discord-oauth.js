@@ -6,8 +6,7 @@ const DISCORD_AUTH_URL = 'https://discord.com/oauth2/authorize';
 const DISCORD_TOKEN_URL = 'https://discord.com/api/oauth2/token';
 const DISCORD_USER_URL = 'https://discord.com/api/users/@me';
 
-const DISCORD_REDIRECT_URI =
-    'http://localhost:5000/api/v1/auth/discord/callback';
+const DISCORD_REDIRECT_URI = process.env.DISCORD_REDIRECT_URI || `${env.frontendUrl}/auth/discord/callback`;
 
 function getDiscordAuthorizationUrl() {
     const params = new URLSearchParams({
