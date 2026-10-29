@@ -63,7 +63,7 @@ const productAdminRoutes = require('./modules/products/product.admin.routes');
 const giftCardAdminRoutes = require('./modules/gift-cards/gift-card.admin.routes');
 
 const app = express();
-
+app.set('trust proxy', 1);
 
 // ─────────────────────────────────────────────
 // Global middleware
