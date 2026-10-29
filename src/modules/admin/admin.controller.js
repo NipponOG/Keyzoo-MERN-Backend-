@@ -23,7 +23,8 @@ async function login(req, res, next) {
         try {
             await adminLoginHistoryRepository.recordSuccessfulLogin({
                 userId: result.user.id,
-                ipAddress: req.ip,
+                // ipAddress: req.ip,
+                ipAddress: req.get('cf-connecting-ip') || req.ip,
                 userAgent: req.get('user-agent'),
                 loginMethod: 'password',
             });
@@ -213,7 +214,8 @@ async function verifyPasskeyAuthentication(req, res, next) {
         try {
             await adminLoginHistoryRepository.recordSuccessfulLogin({
                 userId: result.user.id,
-                ipAddress: req.ip,
+                // ipAddress: req.ip,
+                ipAddress: req.get('cf-connecting-ip') || req.ip,
                 userAgent: req.get('user-agent'),
                 loginMethod: 'passkey',
             });
