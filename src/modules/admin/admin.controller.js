@@ -229,6 +229,13 @@ async function verifyPasskeyAuthentication(req, res, next) {
             jwt: result.jwt,
             user: result.user,
         });
+
+        console.log('=== PASSKEY IP DEBUG ===');
+        console.log('Express IP:', req.ip);
+        console.log('Socket IP:', req.socket.remoteAddress);
+        console.log('Forwarded IP:', req.get('x-forwarded-for'));
+        console.log('Resolved IP chain:', req.ips);
+        console.log('========================');
     } catch (error) {
         next(error);
     }
