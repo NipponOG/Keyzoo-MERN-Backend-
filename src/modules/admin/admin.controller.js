@@ -238,6 +238,7 @@ async function verifyPasskeyAuthentication(req, res, next) {
         console.log('Forwarded IP:', req.get('x-forwarded-for'));
         console.log('Resolved IP chain:', req.ips);
         console.log('CF-Connecting-IP:', req.get('cf-connecting-ip'));
+        console.log('X-Forwarded-Host:', req.get('x-forwarded-host'));
         console.log('========================');
     } catch (error) {
         next(error);
