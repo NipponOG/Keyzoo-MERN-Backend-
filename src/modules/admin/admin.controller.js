@@ -5,61 +5,62 @@ const adminLoginHistoryRepository = require('../auth/admin-login-history.reposit
 const passkeyService = require('../auth/passkey.service');
 
 const { getIpLocation } = require('../auth/ip-location.service');
+const loginAttemptService = require('../auth/login-attempt.service');
 
-async function login(req, res, next) {
-    try {
-        const { email, password } = req.body;
+// async function login(req, res, next) {
+//     try {
+//         const { email, password } = req.body;
 
-        console.log("=== Admin Login IP Debug ===");
-        console.log("Express IP:", req.ip);
-        console.log("Socket IP:", req.socket.remoteAddress);
-        console.log("X-Forwarded-For:", req.get("x-forwarded-for"));
-        console.log("X-Real-IP:", req.get("x-real-ip"));
-        console.log("=============================");
+//         console.log("=== Admin Login IP Debug ===");
+//         console.log("Express IP:", req.ip);
+//         console.log("Socket IP:", req.socket.remoteAddress);
+//         console.log("X-Forwarded-For:", req.get("x-forwarded-for"));
+//         console.log("X-Real-IP:", req.get("x-real-ip"));
+//         console.log("=============================");
 
-        const result = await authService.loginAdmin({
-            email,
-            password,
-        });
+//         const result = await authService.loginAdmin({
+//             email,
+//             password,
+//         });
 
-        const ipAddress = req.get('cf-connecting-ip') || req.ip;
+//         const ipAddress = req.get('cf-connecting-ip') || req.ip;
 
-        let location = null;
+//         let location = null;
 
-        try {
-            location = await getIpLocation(ipAddress);
-        } catch (error) {
-            console.error('[IP Location] Lookup failed:', error.message);
-        }
+//         try {
+//             location = await getIpLocation(ipAddress);
+//         } catch (error) {
+//             console.error('[IP Location] Lookup failed:', error.message);
+//         }
 
-        try {
+//         try {
 
-            await adminLoginHistoryRepository.recordSuccessfulLogin({
-                userId: result.user.id,
-                // ipAddress: req.ip,
-                // ipAddress: req.get('cf-connecting-ip') || req.ip,
-                ipAddress,
-                location,
-                userAgent: req.get('user-agent'),
-                loginMethod: 'password',
-            });
+//             await adminLoginHistoryRepository.recordSuccessfulLogin({
+//                 userId: result.user.id,
+//                 // ipAddress: req.ip,
+//                 // ipAddress: req.get('cf-connecting-ip') || req.ip,
+//                 ipAddress,
+//                 location,
+//                 userAgent: req.get('user-agent'),
+//                 loginMethod: 'password',
+//             });
 
-        } catch (historyError) {
-            console.error(
-                'Failed to record admin login history:',
-                historyError
-            );
-        }
+//         } catch (historyError) {
+//             console.error(
+//                 'Failed to record admin login history:',
+//                 historyError
+//             );
+//         }
 
-        res.json({
-            success: true,
-            jwt: result.jwt,
-            user: result.user,
-        });
-    } catch (error) {
-        next(error);
-    }
-}
+//         res.json({
+//             success: true,
+//             jwt: result.jwt,
+//             user: result.user,
+//         });
+//     } catch (error) {
+//         next(error);
+//     }
+// }
 
 // async function getCurrentAdmin(req, res) {
 //     res.json({
@@ -70,6 +71,121 @@ async function login(req, res, next) {
 //         },
 //     });
 // }
+
+async function login(req, res, next) {
+    const { email, password } = req.body || {};
+
+    try {
+        // Use Express's resolved client IP.
+        const ipAddress = req.ip || 'unknown';
+
+        // Check whether this email + IP combination is locked.
+        const lockStatus = await loginAttemptService.getLockStatus(
+            email,
+            ipAddress
+        );
+
+        if (lockStatus.locked) {
+            res.set(
+                'Retry-After',
+                String(lockStatus.retryAfter)
+            );
+
+            return res.status(429).json({
+                success: false,
+                message: 'Too many failed login attempts. Please try again later.',
+                retryAfter: lockStatus.retryAfter,
+            });
+        }
+
+        const result = await authService.loginAdmin({
+            email,
+            password,
+        });
+
+        // Successful login: clear this combination's failed attempts.
+        await loginAttemptService.clearFailures(email, ipAddress);
+
+        // Record successful login activity.
+        const historyIpAddress =
+            req.get('cf-connecting-ip') || ipAddress;
+
+        let location = null;
+
+        try {
+            location = await getIpLocation(historyIpAddress);
+        } catch (error) {
+            console.error(
+                '[IP Location] Lookup failed:',
+                error.message
+            );
+        }
+
+        try {
+            await adminLoginHistoryRepository.recordSuccessfulLogin({
+                userId: result.user.id,
+                ipAddress: historyIpAddress,
+                location,
+                userAgent: req.get('user-agent'),
+                loginMethod: 'password',
+            });
+        } catch (historyError) {
+            console.error(
+                'Failed to record admin login history:',
+                historyError
+            );
+        }
+
+        return res.json({
+            success: true,
+            jwt: result.jwt,
+            user: result.user,
+        });
+
+    } catch (error) {
+        // Count only invalid email/password responses.
+        if (error.statusCode === 401) {
+            try {
+                const ipAddress = req.ip || 'unknown';
+
+                const attemptResult =
+                    await loginAttemptService.recordFailure(
+                        email,
+                        ipAddress
+                    );
+
+                if (attemptResult.locked) {
+                    error.message =
+                        'Too many failed login attempts. Please try again later.';
+                    error.statusCode = 429;
+                    error.retryAfter = attemptResult.retryAfter;
+                }
+            } catch (rateLimitError) {
+                console.error(
+                    '[Admin Login Protection] Redis error:',
+                    rateLimitError.message
+                );
+
+                const serviceError = new Error(
+                    'Login protection is temporarily unavailable. Please try again later.'
+                );
+                serviceError.statusCode = 503;
+                return next(serviceError);
+            }
+        }
+
+        if (error.statusCode === 429 && error.retryAfter) {
+            res.set('Retry-After', String(error.retryAfter));
+            return res.status(429).json({
+                success: false,
+                message: error.message,
+                retryAfter: error.retryAfter,
+            });
+        }
+
+        return next(error);
+    }
+}
 
 async function getCurrentAdmin(req, res, next) {
     try {
