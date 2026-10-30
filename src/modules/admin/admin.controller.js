@@ -4,7 +4,7 @@ const authService = require('../auth/auth.service');
 const adminLoginHistoryRepository = require('../auth/admin-login-history.repository');
 const passkeyService = require('../auth/passkey.service');
 
-const { getIpLocation } = require('./ip-location.service');
+const { getIpLocation } = require('../auth/ip-location.service');
 
 async function login(req, res, next) {
     try {
