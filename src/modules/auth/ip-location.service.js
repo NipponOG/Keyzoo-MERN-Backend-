@@ -65,14 +65,13 @@ async function getIpLocation(ipAddress) {
 
     try {
         const url = new URL(
-            `https://ipdata.free/${encodeURIComponent(ipAddress.trim())}`
+            `https://ipapi.co/${encodeURIComponent(ipAddress.trim())}/json/`
         );
 
         const data = await fetchJson(url.toString());
 
         return {
-
-            country: data.country || null,
+            country: data.country_name || data.country || null,
             region: data.region || null,
             city: data.city || null,
             timezone: data.timezone || null,
@@ -81,7 +80,6 @@ async function getIpLocation(ipAddress) {
             postal: data.postal || null,
             isp: data.org || null,
             asn: data.asn || null,
-            
         };
 
     } catch (error) {
