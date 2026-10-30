@@ -85,6 +85,13 @@ async function login(req, res, next) {
             ipAddress
         );
 
+        console.log('[ADMIN LOGIN LOCK CHECK]', {
+            email,
+            ipAddress,
+            locked: lockStatus.locked,
+            retryAfter: lockStatus.retryAfter,
+        });
+
         if (lockStatus.locked) {
             res.set(
                 'Retry-After',
@@ -153,6 +160,12 @@ async function login(req, res, next) {
                         email,
                         ipAddress
                     );
+
+                console.log('[ADMIN LOGIN FAILURE]', {
+                    attempts: attemptResult.attempts,
+                    locked: attemptResult.locked,
+                    retryAfter: attemptResult.retryAfter,
+                });
 
                 if (attemptResult.locked) {
                     error.message =
