@@ -61,6 +61,12 @@ async function ensureIndexes() {
         userId: 1,
         createdAt: -1,
     });
+
+    // Automatically delete login records after 24 hours.
+    await getCollection().createIndex(
+        { createdAt: 1 },
+        { expireAfterSeconds: 86400 }
+    );
 }
 
 module.exports = {
