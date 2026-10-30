@@ -37,14 +37,18 @@ function fetchJson(url, timeoutMs = 3000) {
                     try {
                         resolve(JSON.parse(body));
                     } catch {
-                        reject(new Error('Invalid IP lookup response'));
+                        reject(
+                            new Error('Invalid IP lookup response')
+                        );
                     }
                 });
             }
         );
 
         request.setTimeout(timeoutMs, () => {
-            request.destroy(new Error('IP lookup timed out'));
+            request.destroy(
+                new Error('IP lookup timed out')
+            );
         });
 
         request.on('error', reject);
@@ -60,20 +64,32 @@ async function getIpLocation(ipAddress) {
     }
 
     try {
-        const url = new URL('https://ipconfig.io/json');
-        url.searchParams.set('ip', ipAddress.trim());
+        const url = new URL(
+            `https://ipdata.free/${encodeURIComponent(ipAddress.trim())}`
+        );
 
         const data = await fetchJson(url.toString());
 
         return {
+
             country: data.country || null,
-            region: data.region_name || null,
+            region: data.region || null,
             city: data.city || null,
-            timezone: data.time_zone || null,
+            timezone: data.timezone || null,
+            latitude: data.latitude ?? null,
+            longitude: data.longitude ?? null,
+            postal: data.postal || null,
+            isp: data.org || null,
+            asn: data.asn || null,
+            
         };
 
     } catch (error) {
-        console.error('[IP Location] Lookup failed:', error.message);
+        console.error(
+            '[IP Location] Lookup failed:',
+            error.message
+        );
+
         return null;
     }
 }
