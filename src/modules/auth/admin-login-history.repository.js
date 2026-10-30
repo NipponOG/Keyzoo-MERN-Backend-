@@ -15,6 +15,7 @@ async function recordSuccessfulLogin({
     ipAddress,
     userAgent,
     loginMethod = 'password',
+    location = null,
 }) {
     if (!ObjectId.isValid(userId)) {
         throw new Error('Valid admin user ID is required');
@@ -25,6 +26,7 @@ async function recordSuccessfulLogin({
         event: 'login_success',
         loginMethod,
         ipAddress: ipAddress || null,
+        location: location || null,
         userAgent: userAgent || null,
         createdAt: new Date(),
     };

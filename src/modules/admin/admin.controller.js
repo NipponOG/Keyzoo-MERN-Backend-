@@ -4,6 +4,8 @@ const authService = require('../auth/auth.service');
 const adminLoginHistoryRepository = require('../auth/admin-login-history.repository');
 const passkeyService = require('../auth/passkey.service');
 
+const { getIpLocation } = require('./ip-location.service');
+
 async function login(req, res, next) {
     try {
         const { email, password } = req.body;
@@ -20,14 +22,28 @@ async function login(req, res, next) {
             password,
         });
 
+        const ipAddress = req.get('cf-connecting-ip') || req.ip;
+
+        let location = null;
+
         try {
+            location = await getIpLocation(ipAddress);
+        } catch (error) {
+            console.error('[IP Location] Lookup failed:', error.message);
+        }
+
+        try {
+
             await adminLoginHistoryRepository.recordSuccessfulLogin({
                 userId: result.user.id,
                 // ipAddress: req.ip,
-                ipAddress: req.get('cf-connecting-ip') || req.ip,
+                // ipAddress: req.get('cf-connecting-ip') || req.ip,
+                ipAddress,
+                location,
                 userAgent: req.get('user-agent'),
                 loginMethod: 'password',
             });
+
         } catch (historyError) {
             console.error(
                 'Failed to record admin login history:',
@@ -94,6 +110,7 @@ async function getLoginActivity(req, res, next) {
                 id: login._id.toString(),
                 loginMethod: login.loginMethod,
                 ipAddress: login.ipAddress,
+                location: login.location || null,
                 userAgent: login.userAgent,
                 createdAt: login.createdAt,
             })),
@@ -209,13 +226,25 @@ async function verifyPasskeyAuthentication(req, res, next) {
             response
         );
 
+        const ipAddress = req.get('cf-connecting-ip') || req.ip;
+
+        let location = null;
+
+        try {
+            location = await getIpLocation(ipAddress);
+        } catch (error) {
+            console.error('[IP Location] Lookup failed:', error.message);
+        }
+
         // Record successful passkey login, but don't fail login if
         // the activity-history write fails.
         try {
             await adminLoginHistoryRepository.recordSuccessfulLogin({
                 userId: result.user.id,
                 // ipAddress: req.ip,
-                ipAddress: req.get('cf-connecting-ip') || req.ip,
+                // ipAddress: req.get('cf-connecting-ip') || req.ip,
+                ipAddress,
+                location,
                 userAgent: req.get('user-agent'),
                 loginMethod: 'passkey',
             });
