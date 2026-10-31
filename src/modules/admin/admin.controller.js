@@ -76,6 +76,16 @@ async function login(req, res, next) {
     const { email, password } = req.body || {};
 
     try {
+
+        console.log('[CLIENT IP DEBUG]', {
+            expressIp: req.ip,
+            expressIps: req.ips,
+            forwardedFor: req.get('x-forwarded-for'),
+            realIp: req.get('x-real-ip'),
+            cfConnectingIp: req.get('cf-connecting-ip'),
+            socketIp: req.socket.remoteAddress,
+        });
+
         // Use Express's resolved client IP.
         const ipAddress = req.ip || 'unknown';
 
