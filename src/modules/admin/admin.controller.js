@@ -87,7 +87,8 @@ async function login(req, res, next) {
         });
 
         // Use Express's resolved client IP.
-        const ipAddress = req.ip || 'unknown';
+        // const ipAddress = req.ip || 'unknown';
+        const ipAddress = req.get('cf-connecting-ip') || req.ip || 'unknown';
 
         // Check whether this email + IP combination is locked.
         const lockStatus = await loginAttemptService.getLockStatus(
@@ -163,7 +164,8 @@ async function login(req, res, next) {
         // Count only invalid email/password responses.
         if (error.statusCode === 401) {
             try {
-                const ipAddress = req.ip || 'unknown';
+                // const ipAddress = req.ip || 'unknown';
+                const ipAddress = req.get('cf-connecting-ip') || req.ip || 'unknown';
 
                 const attemptResult =
                     await loginAttemptService.recordFailure(
