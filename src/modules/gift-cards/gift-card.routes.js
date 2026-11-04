@@ -26,6 +26,11 @@ router.get(
 );
 
 router.get(
+    '/store',
+    controller.getPublishedStoreGiftCards
+);
+
+router.get(
     '/:slug',
     controller.getGiftCardBySlug
 );

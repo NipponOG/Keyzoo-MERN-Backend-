@@ -58,50 +58,64 @@ async function getProductDetailBySlug(slug) {
         throw error;
     }
 
-    const productWithAvailability =
-        await addEffectiveAvailability(product);
-
-    let variations = [];
+    let groupProducts = [];
 
     if (product.productGroupId) {
-        const groupProducts =
-            await repository.findPublishedByGroupId(
-                product.productGroupId.toString()
-            );
-
-        variations = await Promise.all(
-            groupProducts.map(addEffectiveAvailability)
+        groupProducts = await repository.findPublishedByGroupId(
+            product.productGroupId.toString()
         );
     }
 
+    // Count stock for the main product and all variations together.
+    const productsWithAvailability =
+        await addEffectiveAvailabilityToMany([
+            product,
+            ...groupProducts,
+        ]);
+
     return {
-        product: productWithAvailability,
-        variations,
+        product: productsWithAvailability[0],
+        variations: productsWithAvailability.slice(1),
     };
 }
 
-async function addEffectiveAvailability(product) {
-    const gameKeys =
-        await gameKeyRepository.findByProductId(
-            product._id.toString()
+async function addEffectiveAvailabilityToMany(products) {
+    if (!Array.isArray(products) || products.length === 0) {
+        return [];
+    }
+
+    const availableCounts =
+        await gameKeyRepository.countAvailableProductKeysByProductIds(
+            products.map((product) => product._id.toString())
         );
 
-    const availableKeys = gameKeys.filter(
-        (key) => key.isAvailable === true
-    ).length;
+    return products.map((product) => {
+        const availableKeys =
+            availableCounts.get(product._id.toString()) || 0;
 
-    const isAvailable =
-        product.available === true &&
-        availableKeys > 0;
+        const isAvailable =
+            product.available === true &&
+            availableKeys > 0;
 
-    return {
-        ...product,
-        available: isAvailable,
-        availableKeys,
-        stockStatus: isAvailable
-            ? 'Healthy'
-            : 'Out of Stock',
-    };
+        return {
+            ...product,
+            available: isAvailable,
+            availableKeys,
+            stockStatus: isAvailable
+                ? 'Healthy'
+                : 'Out of Stock',
+        };
+    });
+}
+
+async function addEffectiveAvailability(product) {
+    if (!product) {
+        return null;
+    }
+
+    const [result] = await addEffectiveAvailabilityToMany([product]);
+
+    return result;
 }
 
 async function getProductById(id) {
@@ -129,12 +143,9 @@ async function getProductVariations(productGroupId) {
         throw error;
     }
 
-    const products =
-        await repository.findByGroupId(productGroupId);
+    const products = await repository.findByGroupId(productGroupId);
 
-    return Promise.all(
-        products.map(addEffectiveAvailability)
-    );
+    return addEffectiveAvailabilityToMany(products);
 }
 
 async function getPublishedProductVariations(productGroupId) {
@@ -142,23 +153,22 @@ async function getPublishedProductVariations(productGroupId) {
         !productGroupId ||
         !ObjectId.isValid(productGroupId)
     ) {
-        const error = new Error(
-            'Valid product group ID is required'
-        );
-
+        const error = new Error('Valid product group ID is required');
         error.statusCode = 400;
-
         throw error;
     }
 
-    const products =
-        await repository.findPublishedByGroupId(
-            productGroupId
-        );
-
-    return Promise.all(
-        products.map(addEffectiveAvailability)
+    const products = await repository.findPublishedByGroupId(
+        productGroupId
     );
+
+    return addEffectiveAvailabilityToMany(products);
+}
+
+async function getPublishedRecommendedProducts(limit = 12) {
+    const products = await repository.findPublishedRecommended(limit);
+
+    return addEffectiveAvailabilityToMany(products);
 }
 
 async function createProduct(data = {}) {
@@ -1332,18 +1342,14 @@ async function getPublishedRecommendedProducts(limit = 12) {
     const products =
         await repository.findPublishedRecommended(limit);
 
-    return Promise.all(
-        products.map(addEffectiveAvailability)
-    );
+    return addEffectiveAvailabilityToMany(products);
 }
 
 async function getPublishedBestSellingProducts(limit = 30) {
     const products =
         await repository.findPublishedBestSelling(limit);
 
-    return Promise.all(
-        products.map(addEffectiveAvailability)
-    );
+    return addEffectiveAvailabilityToMany(products);
 }
 
 module.exports = {

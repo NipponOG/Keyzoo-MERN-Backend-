@@ -184,6 +184,157 @@ async function findPublishedCatalog() {
         .toArray();
 }
 
+function escapeRegex(value) {
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function buildStoreGiftCardFilter({ platform, region }) {
+    const filter = {
+        type: 'gift-card',
+        status: 'published',
+    };
+
+    if (platform) {
+        filter.platform = {
+            $regex: `^${escapeRegex(platform)}$`,
+            $options: 'i',
+        };
+    }
+
+    if (region) {
+        const regionRegex = {
+            $regex: `^${escapeRegex(region)}$`,
+            $options: 'i',
+        };
+
+        filter.$or = [
+            {
+                card_region: regionRegex,
+            },
+            {
+                $and: [
+                    {
+                        $or: [
+                            { card_region: null },
+                            { card_region: '' },
+                            { card_region: { $exists: false } },
+                        ],
+                    },
+                    {
+                        region: regionRegex,
+                    },
+                ],
+            },
+        ];
+    }
+
+    return filter;
+}
+
+async function findPublishedStoreGiftCards({
+    platform,
+    region,
+    skip = 0,
+    limit = 24,
+}) {
+    const filter = buildStoreGiftCardFilter({
+        platform,
+        region,
+    });
+
+    return getCollection()
+        .find(filter)
+        .sort({ createdAt: -1, _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .toArray();
+}
+
+async function countPublishedStoreGiftCards({
+    platform,
+    region,
+}) {
+    const filter = buildStoreGiftCardFilter({
+        platform,
+        region,
+    });
+
+    return getCollection().countDocuments(filter);
+}
+
+async function findPublishedStoreGiftCardRegions({ platform }) {
+    const filter = {
+        type: 'gift-card',
+        status: 'published',
+    };
+
+    if (platform) {
+        filter.platform = {
+            $regex: `^${escapeRegex(platform)}$`,
+            $options: 'i',
+        };
+    }
+
+    return getCollection().aggregate([
+        {
+            $match: filter,
+        },
+        {
+            $project: {
+                effectiveRegion: {
+                    $cond: [
+                        {
+                            $and: [
+                                { $ne: [{ $ifNull: ['$card_region', ''] }, ''] },
+                            ],
+                        },
+                        '$card_region',
+                        '$region',
+                    ],
+                },
+            },
+        },
+        {
+            $match: {
+                effectiveRegion: {
+                    $type: 'string',
+                    $ne: '',
+                },
+            },
+        },
+        {
+            $group: {
+                _id: {
+                    $toLower: {
+                        $trim: {
+                            input: '$effectiveRegion',
+                        },
+                    },
+                },
+                label: {
+                    $first: {
+                        $trim: {
+                            input: '$effectiveRegion',
+                        },
+                    },
+                },
+            },
+        },
+        {
+            $sort: {
+                label: 1,
+            },
+        },
+        {
+            $project: {
+                _id: 0,
+                value: '$_id',
+                label: 1,
+            },
+        },
+    ]).toArray();
+}
+
 // Delete a gift card by MongoDB _id
 async function deleteById(id) {
     const objectId = toObjectId(id);
@@ -211,4 +362,7 @@ module.exports = {
     updateById,
     createMany,
     deleteById,
+    findPublishedStoreGiftCards,
+    countPublishedStoreGiftCards,
+    findPublishedStoreGiftCardRegions,
 };

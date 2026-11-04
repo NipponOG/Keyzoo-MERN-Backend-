@@ -1224,6 +1224,48 @@ async function addEffectiveAvailability(giftCard) {
     };
 }
 
+async function getPublishedStoreGiftCards({
+    platform,
+    region,
+    page = 1,
+    limit = 24,
+}) {
+    const skip = (page - 1) * limit;
+
+    const [giftCards, total, regions] = await Promise.all([
+        repository.findPublishedStoreGiftCards({
+            platform,
+            region,
+            skip,
+            limit,
+        }),
+
+        repository.countPublishedStoreGiftCards({
+            platform,
+            region,
+        }),
+
+        repository.findPublishedStoreGiftCardRegions({
+            platform,
+        }),
+    ]);
+
+    const items = await Promise.all(
+        giftCards.map(addEffectiveAvailability)
+    );
+
+    return {
+        items,
+        pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+        },
+        regions,
+    };
+}
+
 module.exports = {
     getGiftCardBySlug,
     getGiftCardById,
@@ -1238,4 +1280,5 @@ module.exports = {
     addEffectiveAvailability,
     updateGiftCard,
     deleteGiftCard,
+    getPublishedStoreGiftCards,
 };

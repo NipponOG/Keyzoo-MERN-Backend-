@@ -238,6 +238,48 @@ async function deleteGiftCard(req, res, next) {
     }
 }
 
+async function getPublishedStoreGiftCards(req, res, next) {
+    try {
+        const page = Math.max(
+            1,
+            Number.parseInt(req.query.page, 10) || 1
+        );
+
+        const limit = Math.min(
+            50,
+            Math.max(
+                1,
+                Number.parseInt(req.query.limit, 10) || 24
+            )
+        );
+
+        const platform =
+            typeof req.query.platform === 'string'
+                ? req.query.platform.trim()
+                : '';
+
+        const region =
+            typeof req.query.region === 'string'
+                ? req.query.region.trim()
+                : '';
+
+        const result =
+            await giftCardService.getPublishedStoreGiftCards({
+                platform,
+                region,
+                page,
+                limit,
+            });
+
+        return res.json({
+            success: true,
+            data: result,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 module.exports = {
     getGiftCardBySlug,
     getGiftCardById,
@@ -251,4 +293,5 @@ module.exports = {
     updateGiftCard,
     deleteGiftCard,
     getPublishedGiftCardVariations,
+    getPublishedStoreGiftCards,
 };

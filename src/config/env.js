@@ -1,6 +1,7 @@
+
 'use strict';
 
-require('dotenv').config({ path: '.env.local', });
+require('dotenv').config({ path: '.env.local' });
 
 const env = {
     nodeEnv: process.env.NODE_ENV || 'development',
@@ -30,11 +31,6 @@ const env = {
         fromEmail: process.env.RESEND_FROM_EMAIL,
     },
 
-    strapi: {
-        url: process.env.STRAPI_URL,
-        token: process.env.STRAPI_TOKEN,
-    },
-
     payments: {
         stripe: {
             secretKey: process.env.STRIPE_SECRET_KEY,
@@ -53,29 +49,35 @@ const env = {
             environment: process.env.CASHFREE_ENVIRONMENT || 'sandbox',
         },
     },
-
 };
 
-if (!env.mongodb.uri) {
-    throw new Error('MONGODB_URI is not defined');
+function requireEnv(name, value) {
+    if (!value || !value.trim()) {
+        throw new Error(`${name} is not defined`);
+    }
 }
 
-if (!env.google.clientId || !env.google.clientSecret) {
-    throw new Error(
-        'GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are not defined'
-    );
+requireEnv('MONGODB_URI', env.mongodb.uri);
+
+requireEnv('GOOGLE_CLIENT_ID', env.google.clientId);
+requireEnv('GOOGLE_CLIENT_SECRET', env.google.clientSecret);
+
+requireEnv('DISCORD_CLIENT_ID', env.discord.clientId);
+requireEnv('DISCORD_CLIENT_SECRET', env.discord.clientSecret);
+
+requireEnv('RESEND_API_KEY', env.resend.apiKey);
+requireEnv('RESEND_FROM_EMAIL', env.resend.fromEmail);
+
+if (!['development', 'production', 'test'].includes(env.nodeEnv)) {
+    throw new Error(`Invalid NODE_ENV: ${env.nodeEnv}`);
 }
 
-if (!env.discord.clientId || !env.discord.clientSecret) {
-    throw new Error(
-        'DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET are not defined'
-    );
+if (!Number.isInteger(env.port) || env.port < 1 || env.port > 65535) {
+    throw new Error('PORT must be a valid port number');
 }
 
-if (!env.resend.apiKey || !env.resend.fromEmail) {
-    throw new Error(
-        'RESEND_API_KEY and RESEND_FROM_EMAIL are not defined'
-    );
+if (!['sandbox', 'production'].includes(env.payments.cashfree.environment)) {
+    throw new Error('Invalid CASHFREE_ENVIRONMENT');
 }
 
 module.exports = env;

@@ -165,6 +165,49 @@ async function countAvailableProductKeys(productId) {
     });
 }
 
+// Get available key counts for multiple products in one query
+async function countAvailableProductKeysByProductIds(productIds) {
+    if (!Array.isArray(productIds) || productIds.length === 0) {
+        return new Map();
+    }
+
+    const objectIds = productIds
+        .map(toObjectId)
+        .filter(Boolean);
+
+    if (objectIds.length === 0) {
+        return new Map();
+    }
+
+    const results = await getCollection()
+        .aggregate([
+            {
+                $match: {
+                    productId: {
+                        $in: objectIds,
+                    },
+                    isAvailable: true,
+                },
+            },
+            {
+                $group: {
+                    _id: '$productId',
+                    availableKeys: {
+                        $sum: 1,
+                    },
+                },
+            },
+        ])
+        .toArray();
+
+    return new Map(
+        results.map((item) => [
+            item._id.toString(),
+            item.availableKeys,
+        ])
+    );
+}
+
 async function countAvailableGiftCardKeys(giftCardId) {
     const objectId = toObjectId(giftCardId);
 
@@ -312,6 +355,8 @@ module.exports = {
     findByGiftCardId,
 
     countAvailableProductKeys,
+    countAvailableProductKeysByProductIds,
+    
     countAvailableGiftCardKeys,
 
     create,
