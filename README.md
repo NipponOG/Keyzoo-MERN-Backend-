@@ -8,7 +8,7 @@
 ![MongoDB](https://img.shields.io/badge/MongoDB-47A248?logo=mongodb&logoColor=white)
 ![Deployed on Render](https://img.shields.io/badge/Deployed%20on-Render-46E3B7?logo=render&logoColor=white)
 
-**Live API:** https://keyzoo-mern-backend-1.onrender.com
+**Live API:** http://localhost:5000
 
 > **Note:** If the API is hosted on Render's free tier, the first request after a period of inactivity can take 30-60 seconds while the server wakes up.
 
@@ -130,7 +130,7 @@ Check `package.json` and keep only the scripts that exist:
 
 ## API Endpoints
 
-Base URL: `https://keyzoo-mern-backend-1.onrender.com`
+Base URL: `http://localhost:5000`
 
 > Replace the examples below with your real routes.
 
@@ -145,7 +145,7 @@ Base URL: `https://keyzoo-mern-backend-1.onrender.com`
 ### Example request
 
 ```bash
-curl https://keyzoo-mern-backend-1.onrender.com/api/[resource]
+curl http://localhost:5000/api/[resource]
 ```
 
 ## Deployment
