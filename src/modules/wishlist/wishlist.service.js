@@ -29,6 +29,7 @@ function serializeItem(document, itemType, addedAt) {
         _id: document._id.toString(),
         id: document._id.toString(),
         type: itemType,
+        item_type: document.item_type || null,
         slug: document.slug || '',
         title: document.title || '',
         image: document.image || null,
