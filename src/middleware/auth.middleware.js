@@ -1,3 +1,4 @@
+
 'use strict';
 
 const jwt = require('jsonwebtoken');
@@ -8,7 +9,10 @@ function requireAuth(req, res, next) {
     try {
         const authorization = req.headers.authorization;
 
-        if (!authorization || !authorization.startsWith('Bearer ')) {
+        if (
+            !authorization ||
+            !authorization.startsWith('Bearer ')
+        ) {
             const error = new Error('Authentication required');
             error.statusCode = 401;
             throw error;
@@ -17,6 +21,14 @@ function requireAuth(req, res, next) {
         const token = authorization.substring(7);
 
         const decoded = jwt.verify(token, JWT_SECRET);
+
+        // MFA challenge tokens are only valid
+        // for the dedicated 2FA verification flow.
+        if (decoded.type === 'mfa-challenge') {
+            const error = new Error('Authentication required');
+            error.statusCode = 401;
+            throw error;
+        }
 
         req.user = decoded;
 

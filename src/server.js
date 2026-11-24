@@ -7,6 +7,7 @@ const app = require('./app');
 const { connectDatabase, closeDatabase } = require('./config/database');
 const authRepository = require('./modules/auth/auth.repository');
 const orderRepository = require('./modules/orders/order.repository');
+const wishlistRepository = require('./modules/wishlist/wishlist.repository');
 
 async function startServer() {
     try {
@@ -14,9 +15,11 @@ async function startServer() {
 
         await authRepository.ensureIndexes();
         await orderRepository.ensureIndexes();
+        await wishlistRepository.ensureIndexes();
 
         console.log('✅ Auth indexes ready');
         console.log('✅ Order indexes ready');
+        console.log('✅ Wishlist indexes ready');
 
         const server = app.listen(env.port, '0.0.0.0', () => {
             console.log(`🚀 Keyzoo backend running on port ${env.port}`);

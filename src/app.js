@@ -32,6 +32,7 @@ const newsletterRoutes = require('./modules/newsletter/newsletter.routes');
 const storeRoutes = require('./modules/store/store.routes');
 const productRoutes = require('./modules/products/product.routes');
 const giftCardRoutes = require('./modules/gift-cards/gift-card.routes');
+const wishlistRoutes = require('./modules/wishlist/wishlist.routes');
 const gameKeyRoutes = require('./modules/game-keys/game-key.routes');
 const gameKeyAdminRoutes = require('./modules/game-keys/game-key.admin.routes');
 
@@ -186,6 +187,7 @@ app.use('/api/v1/invoices', maintenanceMiddleware, invoiceRoutes);
 app.use('/api/v1/tickets', maintenanceMiddleware, ticketRoutes);
 app.use('/api/v1/products', maintenanceMiddleware, productRoutes);
 app.use('/api/v1/gift-cards', maintenanceMiddleware, giftCardRoutes);
+app.use('/api/v1/wishlist', maintenanceMiddleware, wishlistRoutes);
 app.use('/api/v1/game-keys', maintenanceMiddleware, gameKeyRoutes);
 app.use('/api/v1/auth', maintenanceMiddleware, authRoutes);
 app.use('/api/v1/home/hero', maintenanceMiddleware, heroBannerRoutes);
